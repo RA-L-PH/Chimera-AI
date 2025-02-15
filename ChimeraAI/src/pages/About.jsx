@@ -55,35 +55,34 @@ const About = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
       {/* Hero Section */}
-      <section className="container mx-auto px-6 py-20 text-center text-white min-h-screen">
-        <div className="mb-8">
+      <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-20 text-center text-white min-h-screen">
+        <div className="mb-6 sm:mb-8">
           <img 
             src={Logo} 
             alt="Chimera AI Logo" 
-            className="mx-auto h-80 w-auto"
+            className="mx-auto h-48 sm:h-80 w-auto"
           />
         </div>
-        <h1 className="mb-6 text-5xl font-bold leading-tight">
+        <h1 className="mb-4 sm:mb-6 text-3xl sm:text-5xl font-bold leading-tight px-2">
           Welcome to Chimera AI – Revolutionizing Chatbot Technology
         </h1>
-        <p className="mb-8 text-xl">
+        <p className="mb-6 sm:mb-8 text-lg sm:text-xl px-2">
           Experience the power of multiple AI models working together to deliver superior conversational experiences.
         </p>
         <button
           onClick={handleTryNowClick}
-          className="inline-block rounded-full bg-white px-8 py-3 text-lg font-semibold text-purple-600 transition-all hover:bg-purple-100 hover:shadow-lg"
+          className="inline-block rounded-full bg-white px-6 sm:px-8 py-2 sm:py-3 text-base sm:text-lg font-semibold text-purple-600 transition-all hover:bg-purple-100 hover:shadow-lg"
         >
           Try Now
         </button>
       </section>
 
       {/* Features Section */}
-      
-      <section className="bg-white py-23">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+      <section className="bg-white py-16 sm:py-23">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-3">
             {/* Feature Card 1 */}
-            <div className="rounded-lg bg-gradient-to-br from-purple-50 to-indigo-50 p-6 shadow-lg transition-all hover:shadow-xl">
+            <div className="rounded-lg bg-gradient-to-br from-purple-50 to-indigo-50 p-4 sm:p-6 shadow-lg transition-all hover:shadow-xl">
               <div className="mb-4 text-4xl text-purple-600">
                 <i className="fas fa-robot"></i>
               </div>
@@ -92,7 +91,7 @@ const About = () => {
             </div>
 
             {/* Feature Card 2 */}
-            <div className="rounded-lg bg-gradient-to-br from-purple-50 to-indigo-50 p-6 shadow-lg transition-all hover:shadow-xl">
+            <div className="rounded-lg bg-gradient-to-br from-purple-50 to-indigo-50 p-4 sm:p-6 shadow-lg transition-all hover:shadow-xl">
               <div className="mb-4 text-4xl text-purple-600">
                 <i className="fas fa-sliders-h"></i>
               </div>
@@ -101,7 +100,7 @@ const About = () => {
             </div>
 
             {/* Feature Card 3 */}
-            <div className="rounded-lg bg-gradient-to-br from-purple-50 to-indigo-50 p-6 shadow-lg transition-all hover:shadow-xl">
+            <div className="rounded-lg bg-gradient-to-br from-purple-50 to-indigo-50 p-4 sm:p-6 shadow-lg transition-all hover:shadow-xl">
               <div className="mb-4 text-4xl text-purple-600">
                 <i className="fas fa-chart-line"></i>
               </div>
@@ -113,10 +112,10 @@ const About = () => {
       </section>
 
       {/* Benefits Section */}
-      <section className="bg-gray-50 py-22">
-        <div className="container mx-auto px-6">
-          <h2 className="mb-12 text-center text-4xl font-bold text-gray-800">Key Benefits</h2>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+      <section className="bg-gray-50 py-16 sm:py-22">
+        <div className="container mx-auto px-4 sm:px-6">
+          <h2 className="mb-8 sm:mb-12 text-center text-3xl sm:text-4xl font-bold text-gray-800">Key Benefits</h2>
+          <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-3">
             <div className="text-center">
               <h3 className="mb-3 text-xl font-bold text-purple-600">Enhanced Capabilities</h3>
               <p className="text-gray-600">Powerful combination of multiple AI models for superior performance.</p>
@@ -134,24 +133,24 @@ const About = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-800 py-8 text-white">
-        <div className="container mx-auto px-6">
+      <footer className="bg-gray-800 py-6 sm:py-8 text-white">
+        <div className="container mx-auto px-4 sm:px-6">
           <div className="flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
-            <div className="text-sm">
+            <div className="text-xs sm:text-sm text-center md:text-left">
               © 2025 Chimera AI. All rights reserved.
             </div>
-            <div className="space-x-6">
+            <div className="space-x-4 sm:space-x-6">
               <a 
                 href="https://github.com/RA-L-PH" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="hover:text-purple-400"
+                className="hover:text-purple-400 text-sm sm:text-base"
               >
                 GitHub
               </a>
               <a 
                 href="mailto:ralphaacarvalho@gmail.com" 
-                className="hover:text-purple-400"
+                className="hover:text-purple-400 text-sm sm:text-base"
               >
                 Email
               </a>
