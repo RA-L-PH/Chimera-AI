@@ -590,7 +590,19 @@ const ChatWindow = () => {
     <div className="flex flex-col h-screen bg-gray-900 pl-20">
       {/* Chat Header */}
       <div className="bg-gray-800 p-4 shadow-md">
-        <h1 className="text-xl font-semibold text-white mb-2">{chatData.name}</h1>
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-xl font-semibold text-white">{chatData.name}</h1>
+          <div className="flex items-center gap-4 text-sm text-gray-300 bg-gray-700 px-4 py-2 rounded-lg">
+            <span className="text-blue-400">Commands:</span>
+            <span>/parallel,</span>
+            <span>/series</span>
+            <span className="text-blue-400 ml-2">Format:</span>
+            <span>**bold**,</span>
+            <span>*italic*,</span>
+            <span>`code`</span>
+            <span className="text-gray-500">(Ctrl+B/I/E)</span>
+          </div>
+        </div>
         <div className="flex gap-2 overflow-x-auto">
           {chatData.modelIds?.map((modelId, index) => (
             <span
@@ -660,7 +672,7 @@ const ChatWindow = () => {
             value={inputMessage}
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
-            placeholder={`Type your message... (Shift+Enter for new line)- **bold** (Ctrl+B), *italic* (Ctrl+I), \`code\` (Ctrl+E), \`\`\`code block\`\`\`, > quote`}
+            placeholder="Type '/' for commands or message..."
             className="flex-1 px-4 py-2 rounded-lg bg-gray-700 text-white placeholder-gray-400 
                      border border-gray-600 focus:outline-none focus:border-blue-500
                      resize-none min-h-[44px] max-h-32 font-mono whitespace-pre-wrap"
