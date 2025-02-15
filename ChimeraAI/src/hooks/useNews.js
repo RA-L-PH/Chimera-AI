@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/firebaseConfig';
 import { collection, getDocs, addDoc, query, orderBy, limit, deleteDoc } from 'firebase/firestore';
-import { getNextScheduleTime } from '../utils/schedule';
 
 const API_KEY = 'a4c4cc4d92317af44c81a1b1fa64254e';
 const TECH_KEYWORDS = 'technology OR artificial intelligence OR cybersecurity OR programming';
@@ -11,7 +10,6 @@ export const useNews = () => {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [nextUpdate, setNextUpdate] = useState(null);
 
   const fetchAndUpdateNews = async () => {
     try {
@@ -37,30 +35,27 @@ export const useNews = () => {
         lastUpdated: new Date()
       }));
 
-      try {
-        await Promise.all([
-          getDocs(newsRef).then(snapshot => 
-            Promise.all(snapshot.docs.map(doc => deleteDoc(doc.ref)))
-          ),
-          ...formattedArticles.map(article => 
-            addDoc(collection(db, 'news'), article)
-          )
-        ]);
-      } catch (firestoreError) {
-        console.warn('Firestore operation failed:', firestoreError);
+      // Check if collection exists
+      const docSnapshot = await getDocs(newsRef);
+      if (!docSnapshot.empty) {
+        await Promise.all(
+          docSnapshot.docs.map(doc => deleteDoc(doc.ref))
+        );
       }
+
+      await Promise.all(
+        formattedArticles.map(article => addDoc(newsRef, article))
+      );
 
       setNews(formattedArticles);
       setError(null);
     } catch (error) {
       console.error('Error fetching news:', error);
       setError(error.message);
-      
+
       try {
         const cachedNews = await getDocs(
-          query(collection(db, 'news'), 
-          orderBy('timestamp', 'desc'), 
-          limit(4))
+          query(collection(db, 'news'), orderBy('timestamp', 'desc'), limit(4))
         );
         const newsData = cachedNews.docs.map(doc => doc.data());
         if (newsData.length > 0) {
@@ -76,26 +71,19 @@ export const useNews = () => {
   };
 
   useEffect(() => {
-    const setupNewsSchedule = () => {
-      const next = getNextScheduleTime();
-      setNextUpdate(next);
-
-      const timeUntilNext = next.getTime() - new Date().getTime();
-      const timer = setTimeout(() => {
+    const checkTimeAndFetch = () => {
+      const now = new Date();
+      const hours = now.getHours();
+      if ([0, 6, 12, 18].includes(hours)) {
         fetchAndUpdateNews();
-        setupNewsSchedule(); // Setup next schedule after fetching
-      }, timeUntilNext);
-
-      return () => clearTimeout(timer);
+      }
     };
 
-    // Initial fetch
-    fetchAndUpdateNews();
-    // Setup next schedule
-    const cleanup = setupNewsSchedule();
+    checkTimeAndFetch();
+    const interval = setInterval(checkTimeAndFetch, 60 * 60 * 1000); // Check every hour
 
-    return () => cleanup();
+    return () => clearInterval(interval);
   }, []);
 
-  return { news, loading, error, nextUpdate };
+  return { news, loading, error };
 };

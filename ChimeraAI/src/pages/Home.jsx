@@ -2,34 +2,32 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import ChatForm from '../components/ChatForm';
-import { auth } from '../firebase/firebaseConfig';
-import { useNews } from '../hooks/useNews';
+import { auth, db } from '../firebase/firebaseConfig';
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 
 const Home = () => {
   const [greeting, setGreeting] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [userName, setUserName] = useState('User');
-  const { news, loading, error } = useNews();
+  const [news, setNews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        // Get display name or email
         const fullName = user.displayName || user.email.split('@')[0];
-        // Extract first name
         const firstName = fullName.split(' ')[0];
         setUserName(firstName);
       } else {
         setUserName('User');
       }
     });
-
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-    // Set greeting based on time of day
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) {
       setGreeting('Good Morning');
@@ -40,38 +38,59 @@ const Home = () => {
     }
   }, []);
 
+  const fetchNewsFromFirestore = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error("User is not authenticated");
+      }
+
+      const newsRef = collection(db, 'News'); // Keep 'News' capitalized if that's your collection name
+      const snapshot = await getDocs(query(newsRef, orderBy('timestamp', 'desc'), limit(4)));
+      const newsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      if (newsData.length > 0) {
+        setNews(newsData);
+        setError(null);
+      } else {
+        throw new Error('No news articles found');
+      }
+    } catch (fetchError) {
+      console.error('Error fetching news from Firestore:', fetchError);
+      setError(fetchError.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNewsFromFirestore();
+    const interval = setInterval(fetchNewsFromFirestore, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleNewChat = () => {
     setIsFormOpen(true);
   };
 
   const handleSubmit = (chatData) => {
-    // Handle the new chat data here
     console.log(chatData);
     setIsFormOpen(false);
-    // Optionally navigate to chat page after creation
     navigate('/dashboard/chat');
   };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-4xl mx-auto"
-      >
-        {/* Greeting Section */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto">
         <div className="mb-12">
           <h1 className="text-4xl font-bold mb-4">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
               {greeting}, {userName}
             </span>
           </h1>
-          <p className="text-gray-400 text-xl">
-            Welcome back to Chimera AI. Let's explore the latest in AI technology.
-          </p>
+          <p className="text-gray-400 text-xl">Welcome back to Chimera AI. Let's explore the latest in AI technology.</p>
         </div>
 
-        {/* News Section */}
         <div className="bg-gray-800 rounded-xl p-6">
           <h2 className="text-2xl font-semibold mb-6">Latest Tech News</h2>
           {loading ? (
@@ -79,9 +98,7 @@ const Home = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
           ) : error ? (
-            <div className="text-red-400 p-4 rounded-lg bg-red-900/20">
-              {error}
-            </div>
+            <div className="text-red-400 p-4 rounded-lg bg-red-900/20">{error}</div>
           ) : (
             <div className="space-y-4">
               {news.map((item) => (
@@ -97,7 +114,7 @@ const Home = () => {
                     <h3 className="text-lg font-medium">{item.title}</h3>
                     <div className="text-right">
                       <span className="text-sm text-blue-400 block">{item.source}</span>
-                      <span className="text-sm text-gray-400">{item.time}</span>
+                      <span className="text-sm text-gray-400">{new Date(item.publishedAt).toLocaleString()}</span>
                     </div>
                   </div>
                 </motion.a>
@@ -106,21 +123,12 @@ const Home = () => {
           )}
         </div>
 
-        {/* Quick Actions */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <motion.button
-            onClick={handleNewChat}
-            whileHover={{ scale: 1.05 }}
-            className="bg-gradient-to-r from-blue-500 to-blue-700 p-4 rounded-lg"
-          >
+          <motion.button onClick={handleNewChat} whileHover={{ scale: 1.05 }} className="bg-gradient-to-r from-blue-500 to-blue-700 p-4 rounded-lg">
             <i className="fas fa-plus-circle mr-2"></i>
             Start New Chat
           </motion.button>
-          <motion.button
-            onClick={() => navigate('/dashboard/chat')}
-            whileHover={{ scale: 1.05 }}
-            className="bg-gradient-to-r from-purple-500 to-purple-700 p-4 rounded-lg"
-          >
+          <motion.button onClick={() => navigate('/dashboard/chat')} whileHover={{ scale: 1.05 }} className="bg-gradient-to-r from-purple-500 to-purple-700 p-4 rounded-lg">
             <i className="fas fa-history mr-2"></i>
             View Recent Chats
           </motion.button>
@@ -130,10 +138,7 @@ const Home = () => {
       <AnimatePresence>
         {isFormOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <ChatForm 
-              onSubmit={handleSubmit} 
-              onCancel={() => setIsFormOpen(false)} 
-            />
+            <ChatForm onSubmit={handleSubmit} onCancel={() => setIsFormOpen(false)} />
           </div>
         )}
       </AnimatePresence>
