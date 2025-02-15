@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app';
+import process from 'node:process';
 import { 
   getAuth, 
   GoogleAuthProvider,
@@ -11,13 +12,13 @@ import {
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCw3TQbo0kR4uwuQdPJHdMYZ8eSkCvwXTI",
-  authDomain: "chimera-ai.firebaseapp.com",
-  projectId: "chimera-ai",
-  storageBucket: "chimera-ai.firebasestorage.app",
-  messagingSenderId: "885052782781",
-  appId: "1:885052782781:web:6926df1376ed32ec011fd4",
-  measurementId: "G-71T0ENY8M6"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
