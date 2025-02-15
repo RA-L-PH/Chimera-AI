@@ -1,3 +1,5 @@
+const apikey = "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"
+
 const ConstantAPI = async (model, message, onChunk) => {
   try {
     // Add error checking for API key
@@ -8,7 +10,7 @@ const ConstantAPI = async (model, message, onChunk) => {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}`,
+        "Authorization": `Bearer ${apikey}`,
         "HTTP-Referer": "https://chimera-ai.vercel.app", // Update with your actual deployed URL
         "X-Title": "ChimeraAI",
         "Content-Type": "application/json",
