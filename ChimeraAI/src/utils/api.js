@@ -5,7 +5,7 @@ const ConstantAPI = async (model, message, onChunk) => {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.REACT_APP_OPENROUTER_API_KEY}`,
+        "Authorization": `Bearer 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`,
         "HTTP-Referer": "<>",
         "X-Title": "ChimeraAI",
         "Content-Type": "application/json"

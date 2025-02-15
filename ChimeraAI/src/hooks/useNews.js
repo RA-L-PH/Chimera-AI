@@ -1,29 +1,4 @@
 import { useState, useEffect } from 'react';
-import process from 'node:process';
-
-const mockNewsData = {
-  status: "ok",
-  articles: [
-    {
-      title: "AI Breakthrough: New Model Surpasses Human Performance",
-      publishedAt: "2025-02-15T09:00:00Z",
-      url: "https://example.com/ai-news-1",
-      source: { name: "Tech Daily" }
-    },
-    {
-      title: "The Future of Cloud Computing: 2025 Trends",
-      publishedAt: "2025-02-15T08:30:00Z",
-      url: "https://example.com/cloud-news",
-      source: { name: "Cloud Weekly" }
-    },
-    {
-      title: "Quantum Computing: A New Era Begins",
-      publishedAt: "2025-02-15T08:00:00Z",
-      url: "https://example.com/quantum-news",
-      source: { name: "Science Today" }
-    }
-  ]
-};
 
 export const useNews = () => {
   const [news, setNews] = useState([]);
@@ -35,18 +10,17 @@ export const useNews = () => {
       try {
         let data;
         
-        if (process.env.NODE_ENV === 'production') {
-          // Production: Use real API
-          const response = await fetch(
-            `https://newsapi.org/v2/top-headlines?category=technology&pageSize=3&language=en&apiKey=${process.env.REACT_APP_NEWS_API_KEY}`
-          );
-          data = await response.json();
-        } else {
-          // Development: Use mock data
-          data = mockNewsData;
-          // Simulate network delay
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+        // Modified condition to always use direct API call
+        const response = await fetch(
+          `https://newsapi.org/v2/top-headlines?category=technology&pageSize=3&language=en&apiKey=85c9baff60144ee1a80edc0048f10235`,
+          {
+            headers: {
+              'Origin': 'http://localhost:5007', // Simulate localhost origin
+              'Referer': 'http://localhost:5007' // Simulate localhost referer
+            }
+          }
+        );
+        data = await response.json();
 
         if (data.status === 'error') {
           throw new Error(data.message);
