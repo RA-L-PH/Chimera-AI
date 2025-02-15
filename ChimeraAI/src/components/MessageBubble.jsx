@@ -39,20 +39,20 @@ const MessageBubble = ({
           ${isUser 
             ? 'bg-blue-600 text-white' 
             : 'bg-gray-700 text-gray-100'}
-          overflow-hidden
+          break-words
         `}
       >
         <div className="flex justify-between items-start gap-4">
-          <div className="overflow-x-hidden overflow-y-auto max-h-[500px] scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+          <div className="w-full">
             <ReactMarkdown 
               className="prose prose-invert max-w-none break-words"
               components={{
-                p: ({ children }) => <p className="m-0 whitespace-pre-line">{children}</p>,
+                p: ({ children }) => <p className="m-0 whitespace-pre-wrap break-words">{children}</p>,
                 code: ({ node, inline, className, children, ...props }) => {
                   return (
                     <code
                       className={`${inline ? 'bg-gray-800 px-1 py-0.5 rounded' : 'block bg-gray-800 p-4 rounded-lg'} 
-                                font-mono text-sm overflow-x-auto`}
+                                font-mono text-sm whitespace-pre-wrap break-words`}
                       {...props}
                     >
                       {children}
@@ -60,7 +60,7 @@ const MessageBubble = ({
                   )
                 },
                 pre: ({ children }) => (
-                  <pre className="overflow-x-auto">{children}</pre>
+                  <pre className="whitespace-pre-wrap break-words">{children}</pre>
                 )
               }}
             >
