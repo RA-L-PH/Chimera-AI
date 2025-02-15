@@ -1,19 +1,25 @@
 const ConstantAPI = async (model, message, onChunk) => {
   try {
+    // Add error checking for API key
+    if (!process.env.NEXT_PUBLIC_OPENROUTER_API_KEY) {
+      throw new Error('OpenRouter API key is not configured');
+    }
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer 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`,
-        "HTTP-Referer": "https://github.com/RA-L-PH/Chimera-AI", // Replace with your actual repository URL
+        "Authorization": `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://chimera-ai.vercel.app", // Update with your actual deployed URL
         "X-Title": "ChimeraAI",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "OR-SDK-Version": "1.0.0"
       },
       body: JSON.stringify({
         "model": model,
         "messages": [
           {
             "role": "user",
-            "content": `use Markdown(code,bold,itallic,bullets) wherever necessary. As for the codes use their own Syntaxes and not markdown within the response. ${message}`
+            "content": message
           }
         ],
         "stream": true
@@ -21,7 +27,8 @@ const ConstantAPI = async (model, message, onChunk) => {
     });
 
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`API request failed: ${response.status} - ${errorText}`);
     }
 
     const reader = response.body.getReader();
