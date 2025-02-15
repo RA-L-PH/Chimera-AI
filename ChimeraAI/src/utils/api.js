@@ -3,8 +3,8 @@ const ConstantAPI = async (model, message, onChunk) => {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer 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`,
-        "HTTP-Referer": "<>",
+        "Authorization": `Bearer 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`,
+        "HTTP-Referer": "https://github.com/RA-L-PH/Chimera-AI", // Replace with your actual repository URL
         "X-Title": "ChimeraAI",
         "Content-Type": "application/json"
       },
