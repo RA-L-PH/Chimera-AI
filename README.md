@@ -68,7 +68,7 @@ Chimera AI offers extensive customization options to ensure that your chatbot me
 
 - **Modify the chatbot's responses**: Tailor the responses to align with your brand's voice and tone.
 - **Add new functionalities**: Integrate additional AI models or features to enhance your chatbot's capabilities.
-- **Adjust the chatbot's behavior**: Configure the chatbot to handle different types of interactions and scenarios.
+- **Adjust the chatbot's behavior**: Configure the chatbot to handle different types of interactions and scenarios. There are '/' commands as well.
 
 For more information on customization, refer to the [Customization Guide](#customization-guide).
 
