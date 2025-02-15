@@ -1,27 +1,39 @@
-const apikey = "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"
-
 const ConstantAPI = async (model, message, onChunk) => {
   try {
-    // Add error checking for API key
-    if (!process.env.NEXT_PUBLIC_OPENROUTER_API_KEY) {
-      throw new Error('OpenRouter API key is not configured');
-    }
-
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apikey}`,
-        "HTTP-Referer": "https://chimera-ai.vercel.app", // Update with your actual deployed URL
+        "Authorization": `Bearer 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`,
+        "HTTP-Referer": "https://github.com/RA-L-PH/Chimera-AI", // Replace with your actual repository URL
         "X-Title": "ChimeraAI",
-        "Content-Type": "application/json",
-        "OR-SDK-Version": "1.0.0"
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         "model": model,
         "messages": [
           {
             "role": "user",
-            "content": message
+            "content": `Use Markdown Formatting:
+
+Code snippets: Use appropriate syntax.
+Bold text for emphasis.
+Italic text for subtle highlights.
+Bullet points for structured responses.
+Code Representation:
+
+Maintain original syntax for each programming language.
+Ensure clarity and readability.
+Avoid enclosing code in Markdown ("``` ```") within responses.
+Enhance Contextual Understanding:
+
+Interpret user intent flexibly.
+Adjust responses based on previous context.
+Provide detailed explanations when necessary.
+Versatility & Depth:
+
+Adapt responses to different levels of expertise (beginner to advanced).
+Offer multiple perspectives or solutions when applicable.
+Suggest optimizations and best practices. ${message}`
           }
         ],
         "stream": true
@@ -29,8 +41,7 @@ const ConstantAPI = async (model, message, onChunk) => {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API request failed: ${response.status} - ${errorText}`);
+      throw new Error(`API request failed: ${response.statusText}`);
     }
 
     const reader = response.body.getReader();
