@@ -1,15 +1,57 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { db, auth } from '../firebase/firebaseConfig';
 import ChatForm from '../components/ChatForm';
+import { onAuthStateChanged } from 'firebase/auth';
 
-const mockChats = [
-  { id: 1, title: "Project Planning Discussion", date: "2024-02-14", preview: "Let's discuss the architecture..." },
-  { id: 2, title: "Code Review Session", date: "2024-02-13", preview: "Here's the review of the latest..." },
-  { id: 3, title: "Bug Analysis", date: "2024-02-12", preview: "I found the issue in the..." },
-];
+// Add this helper function at the top of your component
+const truncateMessage = (message, wordLimit = 8) => {
+  if (!message) return 'No messages yet';
+  const words = message.split(' ');
+  if (words.length <= wordLimit) return message;
+  return words.slice(0, wordLimit).join(' ') + '...';
+};
 
 const Chat = () => {
+  const navigate = useNavigate();
+  const [chats, setChats] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      const loadChats = async () => {
+        try {
+          const chatsRef = collection(db, 'Chimera_AI', user.email, 'Chats');
+          const chatsQuery = query(chatsRef, orderBy('updatedAt', 'desc'));
+          const chatsSnap = await getDocs(chatsQuery);
+          
+          const chatsData = chatsSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          
+          setChats(chatsData);
+        } catch (error) {
+          console.error('Error loading chats:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      loadChats();
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [navigate]);
 
   const handleNewChat = () => {
     setIsFormOpen(true);
@@ -19,6 +61,11 @@ const Chat = () => {
     // Handle the new chat data here
     console.log(chatData);
     setIsFormOpen(false);
+  };
+
+  // Update the handleChatClick function:
+  const handleChatClick = (chatId) => {
+    navigate(`/dashboard/chat/${chatId}`);
   };
 
   return (
@@ -35,9 +82,10 @@ const Chat = () => {
         </div>
 
         <div className="space-y-4">
-          {mockChats.map((chat) => (
+          {chats.map((chat) => (
             <motion.div
               key={chat.id}
+              onClick={() => handleChatClick(chat.id)}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               whileHover={{ scale: 1.02 }}
@@ -45,16 +93,20 @@ const Chat = () => {
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-medium text-white">{chat.title}</h3>
-                  <p className="text-gray-400 text-sm mt-1">{chat.preview}</p>
+                  <h3 className="text-lg font-medium text-white">{chat.name}</h3>
+                  <p className="text-gray-400 text-sm mt-1">
+                    {truncateMessage(chat.chatHistory?.[chat.chatHistory.length - 1]?.message)}
+                  </p>
                 </div>
-                <span className="text-sm text-gray-500">{chat.date}</span>
+                <span className="text-sm text-gray-500">
+                  {chat.updatedAt?.toDate().toLocaleDateString()}
+                </span>
               </div>
             </motion.div>
           ))}
         </div>
 
-        {mockChats.length === 0 && (
+        {chats.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-400">No conversations yet. Start a new chat!</p>
           </div>

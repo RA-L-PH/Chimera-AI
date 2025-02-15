@@ -7,9 +7,28 @@ import { onAuthStateChanged } from 'firebase/auth';
 const About = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  const checkMobile = () => {
+    const toMatch = [
+      /Android/i,
+      /webOS/i,
+      /iPhone/i,
+      /iPad/i,
+      /iPod/i,
+      /BlackBerry/i,
+      /Windows Phone/i
+    ];
+    
+    return toMatch.some((toMatchItem) => {
+      return navigator.userAgent.match(toMatchItem);
+    });
+  };
 
   const handleTryNowClick = () => {
-    if (auth.currentUser) {
+    if (isMobile) {
+      navigate('/not-found');
+    } else if (auth.currentUser) {
       navigate('/dashboard');
     } else {
       navigate('/login');
@@ -17,6 +36,7 @@ const About = () => {
   };
 
   useEffect(() => {
+    setIsMobile(checkMobile());
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setLoading(false);
     });
@@ -121,9 +141,20 @@ const About = () => {
               © 2025 Chimera AI. All rights reserved.
             </div>
             <div className="space-x-6">
-              <a href="/about" className="hover:text-purple-400">About</a>
-              <a href="/privacy" className="hover:text-purple-400">Privacy Policy</a>
-              <a href="/terms" className="hover:text-purple-400">Terms of Service</a>
+              <a 
+                href="https://github.com/RA-L-PH" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="hover:text-purple-400"
+              >
+                GitHub
+              </a>
+              <a 
+                href="mailto:ralphaacarvalho@gmail.com" 
+                className="hover:text-purple-400"
+              >
+                Email
+              </a>
             </div>
           </div>
         </div>

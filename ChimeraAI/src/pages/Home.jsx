@@ -3,20 +3,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import ChatForm from '../components/ChatForm';
 import { auth } from '../firebase/firebaseConfig';
+import { useNews } from '../hooks/useNews';
 
 const Home = () => {
   const [greeting, setGreeting] = useState('');
-  const [news, setNews] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [userName, setUserName] = useState('User');
-
+  const { news, loading, error } = useNews();
   const navigate = useNavigate();
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        setUserName(user.displayName || user.email.split('@')[0]);
+        // Get display name or email
+        const fullName = user.displayName || user.email.split('@')[0];
+        // Extract first name
+        const firstName = fullName.split(' ')[0];
+        setUserName(firstName);
       } else {
         setUserName('User');
       }
@@ -35,15 +38,6 @@ const Home = () => {
     } else {
       setGreeting('Good Evening');
     }
-
-    // Mock news data - replace with actual API call
-    const mockNews = [
-      { id: 1, title: 'AI Breakthrough in Natural Language Processing', time: '2 hours ago' },
-      { id: 2, title: 'New Features Added to Chimera AI Platform', time: '4 hours ago' },
-      { id: 3, title: 'Latest Updates in Machine Learning Technology', time: '6 hours ago' },
-    ];
-    setNews(mockNews);
-    setLoading(false);
   }, []);
 
   const handleNewChat = () => {
@@ -79,24 +73,34 @@ const Home = () => {
 
         {/* News Section */}
         <div className="bg-gray-800 rounded-xl p-6">
-          <h2 className="text-2xl font-semibold mb-6">Latest Updates</h2>
+          <h2 className="text-2xl font-semibold mb-6">Latest Tech News</h2>
           {loading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
+          ) : error ? (
+            <div className="text-red-400 p-4 rounded-lg bg-red-900/20">
+              {error}
+            </div>
           ) : (
             <div className="space-y-4">
               {news.map((item) => (
-                <motion.div
+                <motion.a
                   key={item.id}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   whileHover={{ scale: 1.02 }}
-                  className="bg-gray-700/50 p-4 rounded-lg cursor-pointer"
+                  className="block bg-gray-700/50 p-4 rounded-lg cursor-pointer transform transition-transform hover:bg-gray-700"
                 >
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium">{item.title}</h3>
-                    <span className="text-sm text-gray-400">{item.time}</span>
+                    <div className="text-right">
+                      <span className="text-sm text-blue-400 block">{item.source}</span>
+                      <span className="text-sm text-gray-400">{item.time}</span>
+                    </div>
                   </div>
-                </motion.div>
+                </motion.a>
               ))}
             </div>
           )}

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { doc, setDoc, collection, serverTimestamp, getDoc } from 'firebase/firestore';
+import { db, auth } from '../firebase/firebaseConfig';
 
 const AI_MODELS = {
   english: [
@@ -166,6 +168,11 @@ const AI_MODELS = {
   ]
 };
 
+const TIER_LIMITS = {
+  free: 2,
+  premium: Infinity
+};
+
 const ModelCard = ({ model, selected, onToggle }) => (
   <motion.div
     whileHover={{ scale: 1.02 }}
@@ -216,35 +223,113 @@ const ChatForm = ({ onSubmit, onCancel }) => {
   const [chatName, setChatName] = useState('');
   const [selectedModels, setSelectedModels] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState(null);
+  const [userTier, setUserTier] = useState('free');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const defaultName = `New Chat - ${format(new Date(), 'MMM d')}`;
     setChatName(defaultName);
   }, []);
 
+  useEffect(() => {
+    const fetchUserTier = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          const userRef = doc(db, 'Chimera_AI', currentUser.email);
+          const userDoc = await getDoc(userRef);
+          if (userDoc.exists()) {
+            setUserTier(userDoc.data().tier || 'free');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user tier:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserTier();
+  }, []);
+
   const handleModelToggle = (modelId) => {
-    setSelectedModels(prev => 
-      prev.includes(modelId)
+    setSelectedModels(prev => {
+      const isSelected = prev.includes(modelId);
+      const currentCount = prev.length;
+      const modelLimit = TIER_LIMITS[userTier];
+
+      if (!isSelected && currentCount >= modelLimit) {
+        setError(`Free tier users can only select up to ${modelLimit} models. Upgrade to Premium for unlimited selections.`);
+        return prev;
+      }
+
+      setError(null);
+      return isSelected
         ? prev.filter(id => id !== modelId)
-        : [...prev, modelId]
-    );
+        : [...prev, modelId];
+    });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Create chat data
-    const chatData = { 
-      name: chatName, 
-      models: selectedModels.map(id => {
-        const model = [...AI_MODELS.code, ...AI_MODELS.math, ...AI_MODELS.english]
-          .find(m => m.id === id);
-        return model ? model.name : id;
-      })
-    };
-    
-    onSubmit(chatData);
-    navigate('/dashboard/new-chat', { state: chatData });
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setError('You must be logged in to create a chat');
+        return;
+      }
+
+      const chatRef = doc(collection(db, 'Chimera_AI', currentUser.email, 'Chats'));
+      const chatData = {
+        name: chatName,
+        chatHistory: [], 
+        createdOn: serverTimestamp(),
+        modelIds: selectedModels.map(id => {
+          const model = [...AI_MODELS.code, ...AI_MODELS.math, ...AI_MODELS.english]
+            .find(m => m.id === id);
+          return model ? model.modelId : id;
+        }),
+        userId: currentUser.uid,
+        userEmail: currentUser.email,
+        updatedAt: serverTimestamp(),
+        status: 'active'
+      };
+      
+      await setDoc(chatRef, chatData);
+      onSubmit(chatData);
+      navigate(`/dashboard/chat/${chatRef.id}`); // Update navigation path
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      setError('Error creating chat. Please try again.');
+    }
   };
+
+  const TierInfo = () => (
+    <div className="mb-4 flex items-center justify-between bg-gray-800 p-3 rounded-lg">
+      <div>
+        <span className="text-sm text-gray-300">Current Tier: </span>
+        <span className={`font-semibold ${userTier === 'premium' ? 'text-gold-400' : 'text-blue-400'}`}>
+          {userTier.charAt(0).toUpperCase() + userTier.slice(1)}
+        </span>
+      </div>
+      <div className="text-sm text-gray-300">
+        {userTier === 'free' ? (
+          <>
+            Models: {selectedModels.length}/{TIER_LIMITS.free} max
+            <button 
+              className="ml-4 text-blue-400 hover:text-blue-300 underline"
+              onClick={() => navigate('/pricing')}
+            >
+              Upgrade to Premium
+            </button>
+          </>
+        ) : (
+          `Models: ${selectedModels.length} selected`
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <motion.div
@@ -265,7 +350,14 @@ const ChatForm = ({ onSubmit, onCancel }) => {
         </svg>
       </button>
 
+      {error && (
+        <div className="bg-red-500 text-white p-3 rounded-lg mb-4">
+          {error}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6 mt-4"> 
+        {!isLoading && <TierInfo />}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="flex-1">
             <input

@@ -5,7 +5,8 @@ import {
   signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signOut
+  signOut,
+  updateProfile
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -44,12 +45,7 @@ const signInWithGoogle = async () => {
     const result = await signInWithPopup(auth, provider);
     return { 
       success: true, 
-      user: {
-        uid: result.user.uid,
-        email: result.user.email,
-        displayName: result.user.displayName,
-        photoURL: result.user.photoURL
-      } 
+      user: result.user
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -65,10 +61,19 @@ const signInWithEmail = async (email, password) => {
   }
 };
 
-const registerWithEmail = async (email, password) => {
+const registerWithEmail = async (email, password, name) => {
   try {
     const result = await createUserWithEmailAndPassword(auth, email, password);
-    return { success: true, user: result.user };
+    // Update user profile with display name
+    if (name) {
+      await updateProfile(result.user, {
+        displayName: name
+      });
+    }
+    return { 
+      success: true, 
+      user: result.user
+    };
   } catch (error) {
     return { success: false, error: error.message };
   }

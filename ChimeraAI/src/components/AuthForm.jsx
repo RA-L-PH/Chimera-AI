@@ -1,77 +1,115 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { FaGoogle, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { signInWithGoogle, signInWithEmail, registerWithEmail } from '../firebase/firebaseConfig';
+import { doc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase/firebaseConfig';
+
+const initialFormState = {
+  name: '',
+  email: '',
+  password: '',
+  confirmPassword: ''
+};
+
+// Form validation function
+const validateForm = (formData, isLogin, setErrors) => {
+  const newErrors = {};
+  
+  if (!isLogin && !formData.name?.trim()) {
+    newErrors.name = 'Name is required';
+  }
+
+  if (!formData.email?.trim()) {
+    newErrors.email = 'Email is required';
+  } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    newErrors.email = 'Invalid email format';
+  }
+
+  if (!formData.password) {
+    newErrors.password = 'Password is required';
+  } else if (formData.password.length < 6) {
+    newErrors.password = 'Password must be at least 6 characters';
+  }
+
+  if (!isLogin && formData.password !== formData.confirmPassword) {
+    newErrors.confirmPassword = 'Passwords do not match';
+  }
+
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
+
+// User document creation function
+const createUserDocument = async (user, additionalData = {}) => {
+  if (!user) throw new Error('No user provided');
+
+  try {
+    // Create reference using encodeURIComponent for collection name with space
+    const collectionName = encodeURIComponent('Chimera_AI');
+    const userRef = doc(db, collectionName, user.email);
+    
+    const displayName = user.displayName || additionalData.name || user.email.split('@')[0];
+    
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      displayName: displayName,
+      photoURL: user.photoURL || null,
+      createdAt: serverTimestamp(), // Use server timestamp
+      lastLogin: serverTimestamp(),
+      chats: [],
+      settings: {
+        theme: 'dark',
+        notifications: true
+      },
+      tier: 'free', // Added default tier for new users
+      ...additionalData
+    };
+
+    // Use merge option to update existing documents
+    await setDoc(userRef, userData, { merge: true });
+    return userRef;
+  } catch (error) {
+    console.error('Error creating user document:', error);
+    throw new Error('Failed to create user profile. Please try again.');
+  }
+};
 
 const AuthForm = () => {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
+  const [formData, setFormData] = useState(initialFormState);
   const [errors, setErrors] = useState({});
 
-  const handleInputChange = (e) => {
+  const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear errors when user types
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (!isLogin && !formData.name) {
-      newErrors.name = 'Name is required';
-    }
-
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (!isLogin && formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    return newErrors;
-  };
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setErrors(prev => ({ ...prev, [name]: '', submit: '' }));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validationErrors = validateForm();
-    
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
+    if (!validateForm(formData, isLogin, setErrors)) return;
 
     setIsLoading(true);
     try {
       const result = isLogin 
         ? await signInWithEmail(formData.email, formData.password)
-        : await registerWithEmail(formData.email, formData.password);
+        : await registerWithEmail(formData.email, formData.password, formData.name);
 
       if (result.success) {
+        if (!isLogin) {
+          await createUserDocument(result.user, {
+            name: formData.name,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString()
+          });
+        }
         navigate('/dashboard');
       } else {
         setErrors({ submit: result.error });
@@ -88,12 +126,14 @@ const AuthForm = () => {
     try {
       const result = await signInWithGoogle();
       if (result.success) {
+        await createUserDocument(result.user);
         navigate('/dashboard');
       } else {
         setErrors({ submit: result.error });
       }
     } catch (error) {
-      setErrors({ submit: error.message });
+      setErrors({ submit: 'Authentication failed. Please try again.' });
+      console.error('Auth error:', error);
     } finally {
       setIsLoading(false);
     }

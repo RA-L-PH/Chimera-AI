@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { FaHome, FaRobot, FaUser, FaSignOutAlt } from 'react-icons/fa';
 import { MdArrowForwardIos, MdArrowBackIos } from 'react-icons/md';
 import { BiMessageSquareAdd } from "react-icons/bi";
+import { PiChatsBold } from "react-icons/pi";
 import { signOutUser, auth } from '../firebase/firebaseConfig';
 import Logo from '../assets/ChimeraAI.png';
+import ChatForm from './ChatForm';
 
 const Navbar = () => {
   
@@ -15,6 +17,7 @@ const Navbar = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const sidebarRef = useRef(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [showChatForm, setShowChatForm] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -25,6 +28,23 @@ const Navbar = () => {
     } catch (error) {
       console.error('Logout failed:', error);
     }
+  };
+
+  // Add handleNewChat function
+  const handleNewChat = (e) => {
+    e.preventDefault();
+    setShowChatForm(true);
+  };
+
+  // Add handleChatFormSubmit function
+  const handleChatFormSubmit = (chatData) => {
+    setShowChatForm(false);
+    // Navigation will be handled by ChatForm component
+  };
+
+  // Add handleChatFormCancel function
+  const handleChatFormCancel = () => {
+    setShowChatForm(false);
   };
 
   // Add effect to save collapsed state to localStorage
@@ -84,7 +104,7 @@ const Navbar = () => {
   };
 
   // Update the NavLink component for consistent icon sizing
-  const NavLink = ({ href, children, icon, isProfileLink }) => (
+  const NavLink = ({ href, children, icon, isProfileLink, isNewChat }) => (
     <div className="relative group">
       <a
         href={href}
@@ -93,8 +113,12 @@ const Navbar = () => {
                   px-4 py-3 rounded-md transition-all duration-300 ease-in-out 
                   transform hover:scale-105`}
         onClick={(e) => {
-          e.preventDefault();
-          window.location.href = href;
+          if (isNewChat) {
+            handleNewChat(e);
+          } else {
+            e.preventDefault();
+            window.location.href = href;
+          }
         }}
       >
         <div className={`flex-shrink-0 ${isProfileLink ? '' : 'w-6 h-6'}`}>
@@ -116,32 +140,45 @@ const Navbar = () => {
     </div>
   );
 
-  // Update the ProfileSection component to better handle the display name
+  // Update the ProfileSection component to remove the settings link
   const ProfileSection = () => (
-    <NavLink 
-      href="/dashboard/settings" 
-      icon={
-        userProfile?.photoURL ? (
-          <img 
-            src={userProfile.photoURL}
-            alt={userProfile.displayName || "Profile"} 
-            className={`object-cover border-2 border-gray-200 dark:border-gray-600 rounded-full
+    <div className="relative group">
+      <div 
+        className={`flex items-center ${!isCollapsed ? 'space-x-3' : 'justify-center'} 
+                  text-gray-900 dark:text-white px-4 py-3 rounded-md`}
+      >
+        <div className={`flex-shrink-0`}>
+          {userProfile?.photoURL ? (
+            <img 
+              src={userProfile.photoURL}
+              alt={userProfile.displayName || "Profile"} 
+              className={`object-cover border-2 border-gray-200 dark:border-gray-600 rounded-full
                        ${isCollapsed ? 'w-6 h-6' : 'w-8 h-8'}`}
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className={`flex items-center justify-center rounded-full bg-purple-600
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className={`flex items-center justify-center rounded-full bg-purple-600
                           ${isCollapsed ? 'w-6 h-6' : 'w-8 h-8'}`}>
-            <span className="text-white text-sm font-medium">
-              {userProfile?.displayName?.charAt(0).toUpperCase() || <FaUser size={isCollapsed ? 16 : 20} />}
-            </span>
+              <span className="text-white text-sm font-medium">
+                {userProfile?.displayName?.charAt(0).toUpperCase() || <FaUser size={isCollapsed ? 16 : 20} />}
+              </span>
+            </div>
+          )}
+        </div>
+        {!isCollapsed && (
+          <span className="transition-opacity duration-300 ease-in-out">
+            {userProfile?.displayName || "Profile"}
+          </span>
+        )}
+        {isCollapsed && (
+          <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 dark:bg-gray-700 
+                        text-white text-sm rounded opacity-0 group-hover:opacity-100 
+                        transition-opacity whitespace-nowrap z-50">
+            {userProfile?.displayName || "Profile"}
           </div>
-        )
-      }
-      isProfileLink={true}
-    >
-      {userProfile?.displayName || "Profile"}
-    </NavLink>
+        )}
+      </div>
+    </div>
   );
 
   return (
@@ -189,7 +226,14 @@ const Navbar = () => {
           <nav className="flex-1 p-4 space-y-2">
             <NavLink href="/" icon={<FaRobot size={25} />}>Chimera AI</NavLink>
             <NavLink href="/dashboard/" icon={<FaHome size={25} />}>Home</NavLink>
-            <NavLink href="/dashboard/chat" icon={<BiMessageSquareAdd size={25} />}>Chat</NavLink>
+            <NavLink href="/dashboard/chat" icon={<PiChatsBold size={25} />}>Chat</NavLink>
+            <NavLink 
+              href="/dashboard/chat" 
+              icon={<BiMessageSquareAdd size={25} />} 
+              isNewChat={true}
+            >
+              New Chat
+            </NavLink>
           </nav>
 
           {/* Bottom section */}
@@ -213,6 +257,17 @@ const Navbar = () => {
       <main className={`transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'} ${isMobile ? 'ml-0' : ''}`}>
         {/* Your main content goes here */}
       </main>
+
+      {/* Add ChatForm Modal */}
+      {showChatForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center 
+                      justify-center z-50" onClick={handleChatFormCancel}>
+          <ChatForm 
+            onSubmit={handleChatFormSubmit}
+            onCancel={handleChatFormCancel}
+          />
+        </div>
+      )}
     </>
   );
 };
