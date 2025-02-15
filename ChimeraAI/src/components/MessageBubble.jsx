@@ -38,34 +38,39 @@ const MessageBubble = ({
           max-w-[80%] rounded-lg p-4 
           ${isUser 
             ? 'bg-blue-600 text-white' 
-            : 'bg-gray-700 text-gray-100'
-          }
+            : 'bg-gray-700 text-gray-100'}
+          overflow-hidden
         `}
       >
         <div className="flex justify-between items-start gap-4">
-          <ReactMarkdown 
-            className="prose prose-invert max-w-none whitespace-pre-wrap break-words"
-            components={{
-              p: ({ children }) => <p className="m-0 whitespace-pre-line">{children}</p>,
-              code: ({ node, inline, className, children, ...props }) => {
-                return (
-                  <code
-                    className={`${inline ? 'bg-gray-800 px-1 py-0.5 rounded' : 'block bg-gray-800 p-4 rounded-lg'} 
-                              font-mono text-sm whitespace-pre`}
-                    {...props}
-                  >
-                    {children}
-                  </code>
+          <div className="overflow-x-hidden overflow-y-auto max-h-[500px] scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+            <ReactMarkdown 
+              className="prose prose-invert max-w-none break-words"
+              components={{
+                p: ({ children }) => <p className="m-0 whitespace-pre-line">{children}</p>,
+                code: ({ node, inline, className, children, ...props }) => {
+                  return (
+                    <code
+                      className={`${inline ? 'bg-gray-800 px-1 py-0.5 rounded' : 'block bg-gray-800 p-4 rounded-lg'} 
+                                font-mono text-sm overflow-x-auto`}
+                      {...props}
+                    >
+                      {children}
+                    </code>
+                  )
+                },
+                pre: ({ children }) => (
+                  <pre className="overflow-x-auto">{children}</pre>
                 )
-              }
-            }}
-          >
-            {message}
-          </ReactMarkdown>
-          {isStreaming && (
-            <span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse" />
-          )}
-          <div className="flex gap-2">
+              }}
+            >
+              {message}
+            </ReactMarkdown>
+            {isStreaming && (
+              <span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse" />
+            )}
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
             <button
               onClick={onCopy}
               className="text-gray-400 hover:text-white transition-colors"
