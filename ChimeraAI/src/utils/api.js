@@ -1,5 +1,3 @@
-import process from 'node:process';
-
 const ConstantAPI = async (model, message, onChunk) => {
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
