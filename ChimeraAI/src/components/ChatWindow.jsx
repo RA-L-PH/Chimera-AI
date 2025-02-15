@@ -33,8 +33,8 @@ const markdownShortcuts = {
 
 // Add near the top of the file with other constants
 const COMMANDS = {
-  '/series': 'Process responses one after another',
-  '/parallel': 'Process responses in parallel'
+  '/parallel': 'Process all models simultaneously and combine their responses',
+  '/series': 'Process models one after another, each building on the previous response'
 };
 
 const ChatWindow = () => {
@@ -100,7 +100,6 @@ const ChatWindow = () => {
 
   // Add before handleSubmit
   const processParallel = async (message, chatRef, aiTimestamp) => {
-    // Create a single temporary message for the final response
     const tempAiMessage = {
       id: Date.now().toString(),
       message: '',
@@ -110,11 +109,9 @@ const ChatWindow = () => {
       isStreaming: true
     };
   
-    // Add temporary message to state
     setMessages(prev => [...prev, tempAiMessage]);
   
     try {
-      // Collect responses from all models in parallel
       const responses = await Promise.all(
         chatData.modelIds.map(async (modelId) => {
           try {
@@ -189,26 +186,22 @@ const ChatWindow = () => {
 
   // Add this function before handleSubmit
   const processSeries = async (message, chatRef, aiTimestamp) => {
-    // Single message bubble that will show only the final result
     const tempAiMessage = {
       id: Date.now().toString(),
-      message: '', // Stays empty until final model starts responding
+      message: '',
       timestamp: aiTimestamp,
       isUser: false,
       modelId: chatData.modelIds[0],
       isStreaming: true
     };
   
-    // Add the placeholder message
     setMessages(prev => [...prev, tempAiMessage]);
   
     try {
-      // Storage for intermediate responses (not shown to user)
       let responses = {
         input: message
       };
   
-      // Process through each model in series
       for (let i = 0; i < chatData.modelIds.length; i++) {
         const modelId = chatData.modelIds[i];
         const modelName = modelId.split('/').pop().replace(':free', '');
@@ -280,7 +273,6 @@ const ChatWindow = () => {
         }
       }
     } catch (error) {
-      // Clean up temporary message on error
       setMessages(prev => prev.filter(msg => msg.id !== tempAiMessage.id));
       throw error;
     }
@@ -371,6 +363,7 @@ const ChatWindow = () => {
 
     try {
       const currentTimestamp = Timestamp.now();
+      const aiTimestamp = Timestamp.now(); // Add this line to define aiTimestamp
       const newMessage = {
         id: Date.now().toString(),
         message: inputMessage,
@@ -401,38 +394,30 @@ const ChatWindow = () => {
         const messageText = inputMessage.trim();
         const isParallel = messageText.startsWith('/parallel');
         const isSeries = messageText.startsWith('/series');
+        
+        // Remove the command prefix and get the actual message
         const actualMessage = isParallel || isSeries 
           ? messageText.slice(messageText.indexOf(' ') + 1)
           : messageText;
-
-        // Chain AI responses through models
-        const aiTimestamp = Timestamp.now();
-        const chatRef = doc(db, 'Chimera_AI', user.email, 'Chats', chatId);
-
-        try {
-          let finalResponse;
-          if (isParallel) {
-            finalResponse = await processParallel(actualMessage, chatRef, aiTimestamp);
-          } else if (isSeries) {
-            finalResponse = await processSeries(actualMessage, chatRef, aiTimestamp);
-          } else {
-            // Default to first-to-finish if no command is used
-            finalResponse = await processFirstToFinish(actualMessage, chatRef, aiTimestamp);
-          }
-          
-          setConversationContext(prev => [...prev, {
-            role: "assistant",
-            content: finalResponse
-          }]);
-        } catch (error) {
-          console.error('Error processing message:', error);
-          setError(error.message);
+      
+        // Choose processing method based on command
+        let finalResponse;
+        if (isParallel) {
+          finalResponse = await processParallel(actualMessage, chatRef, aiTimestamp);
+        } else if (isSeries) {
+          finalResponse = await processSeries(actualMessage, chatRef, aiTimestamp);
+        } else {
+          // Default to first-to-finish if no command is used
+          finalResponse = await processFirstToFinish(actualMessage, chatRef, aiTimestamp);
         }
+        
+        setConversationContext(prev => [...prev, {
+          role: "assistant",
+          content: finalResponse
+        }]);
       } catch (error) {
-        console.error('Error sending message:', error);
-        setError('Failed to send message. Please try again.');
-      } finally {
-        setIsTyping(false);
+        console.error('Error processing message:', error);
+        setError(error.message);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -468,7 +453,7 @@ const ChatWindow = () => {
           return;
       }
     }
-
+    // ...rest of the function
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
@@ -500,19 +485,19 @@ const ChatWindow = () => {
   const handleTextareaInput = (e) => {
     const textarea = e.target;
     const text = textarea.value;
-    const cursorPosition = textarea.selectionStart; // Add this line
     
-    // Show commands when "/" is typed
-    if (text === '/') {
+    // Show commands when "/" is typed at the start of the input or after a space
+    if (text === '/' || text.match(/\s\/$/)) {
       setShowCommands(true);
       setSelectedCommand(0);
-    } else if (!text.startsWith('/')) {
+    } else if (!text.includes('/')) {
       setShowCommands(false);
     }
 
     let handled = false;
 
     // Check for markdown shortcuts
+    const cursorPosition = textarea.selectionStart;
     Object.entries(markdownShortcuts).forEach(([trigger, { template, offset }]) => {
       if (text.slice(cursorPosition - trigger.length, cursorPosition) === trigger) {
         e.preventDefault();
@@ -634,7 +619,21 @@ const ChatWindow = () => {
       <form onSubmit={handleSubmit} className="p-4 bg-gray-800">
         {showCommands && (
           <div className="absolute bottom-[80px] left-4 bg-gray-700 rounded-lg shadow-lg overflow-hidden ml-20">
-            {/* ... commands dropdown content ... */}
+            {Object.entries(COMMANDS).map(([command, description], index) => (
+              <div
+                key={command}
+                className={`px-4 py-2 hover:bg-gray-600 cursor-pointer ${
+                  index === selectedCommand ? 'bg-gray-600' : ''
+                }`}
+                onClick={() => {
+                  setInputMessage(command + ' ');
+                  setShowCommands(false);
+                }}
+              >
+                <div className="text-white font-mono">{command}</div>
+                <div className="text-gray-400 text-sm">{description}</div>
+              </div>
+            ))}
           </div>
         )}
         <div className="flex gap-4">
