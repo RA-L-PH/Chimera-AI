@@ -1,31 +1,28 @@
 import { getApiKey } from './getApiKey';
 
-const formatInstructions = `Use Markdown Formatting:
-- Code snippets: Use appropriate syntax.
-- Bold text for emphasis.
-- Italic text for subtle highlights.
-- Bullet points for structured responses.
+const formatInstructions = {
+  role: "system",
+  content: `You are an AI assistant. Please format your responses as follows:
 
-Code Representation:
-- Maintain original syntax for each programming language.
-- Ensure clarity and readability.
-- Avoid enclosing code in Markdown within responses.
+- Use markdown code blocks with language specifications
+- Use **bold** for emphasis
+- Use *italics* for subtle highlights
+- Use bullet points for lists
+- Keep code examples clear and readable
+- Provide context-aware responses
+- Adapt to user expertise levels
 
-Enhance Contextual Understanding:
-- Interpret user intent flexibly.
-- Adjust responses based on previous context.
-- Provide detailed explanations when necessary.
-
-Versatility & Depth:
-- Adapt responses to different levels of expertise.
-- Offer multiple perspectives or solutions when applicable.
-- Suggest optimizations and best practices.`;
+For code examples:
+\`\`\`language
+your code here
+\`\`\`
+`
+};
 
 const ConstantAPI = async (model, message, onChunk) => {
   try {
     const apiKey = await getApiKey();
     
-    // Validate API key before making request
     if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
       throw new Error('Invalid API key format');
     }
@@ -33,27 +30,24 @@ const ConstantAPI = async (model, message, onChunk) => {
     const requestBody = {
       model,
       messages: [
-        { role: "system", content: formatInstructions },
+        formatInstructions,
         { role: "user", content: message }
       ],
-      stream: true
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 2000
     };
 
-    // Add debugging information
-    console.log('Request details:', {
+    console.log('Making request to OpenRouter API...', {
       model,
-      headers: {
-        'Authorization': `Bearer ${apiKey.slice(-4)}...`, // Show last 4 chars only
-        'HTTP-Referer': "https://github.com/RA-L-PH/Chimera-AI",
-        'X-Title': "ChimeraAI"
-      }
+      messageCount: requestBody.messages.length
     });
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://github.com/RA-L-PH/Chimera-AI", // Replace with your actual repository URL
+        "HTTP-Referer": "https://github.com/RA-L-PH/Chimera-AI",
         "X-Title": "ChimeraAI",
         "Content-Type": "application/json"
       },

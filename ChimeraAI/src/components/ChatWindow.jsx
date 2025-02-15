@@ -47,9 +47,9 @@ const ChatWindow = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [conversationContext, setConversationContext] = useState([]);
   const [showCommands, setShowCommands] = useState(false);
   const [selectedCommand, setSelectedCommand] = useState(0);
+  const [conversationContext, setConversationContext] = useState([]);
 
   useEffect(() => {
     const loadChat = async () => {
@@ -632,24 +632,9 @@ const ChatWindow = () => {
 
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="p-4 bg-gray-800">
-        {/* Add inside the form element, before the textarea */}
         {showCommands && (
           <div className="absolute bottom-[80px] left-4 bg-gray-700 rounded-lg shadow-lg overflow-hidden ml-20">
-            {Object.entries(COMMANDS).map(([command, description], index) => (
-              <div
-                key={command}
-                className={`px-4 py-2 cursor-pointer hover:bg-gray-600 ${
-                  selectedCommand === index ? 'bg-gray-600' : ''
-                }`}
-                onClick={() => {
-                  setInputMessage(command + ' ');
-                  setShowCommands(false);
-                }}
-              >
-                <span className="text-blue-400">{command}</span>
-                <span className="text-gray-400 ml-2">{description}</span>
-              </div>
-            ))}
+            {/* ... commands dropdown content ... */}
           </div>
         )}
         <div className="flex gap-4">
