@@ -1,10 +1,41 @@
 import Logo from '../assets/ChimeraAI.png';
+import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { auth } from '../firebase/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const About = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+
+  const handleTryNowClick = () => {
+    if (auth.currentUser) {
+      navigate('/dashboard');
+    } else {
+      navigate('/login');
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
       {/* Hero Section */}
-      <section className="container mx-auto px-6 py-20 text-center text-white">
+      <section className="container mx-auto px-6 py-20 text-center text-white min-h-screen">
         <div className="mb-8">
           <img 
             src={Logo} 
@@ -18,16 +49,17 @@ const About = () => {
         <p className="mb-8 text-xl">
           Experience the power of multiple AI models working together to deliver superior conversational experiences.
         </p>
-        <a
-          href="/chat"
+        <button
+          onClick={handleTryNowClick}
           className="inline-block rounded-full bg-white px-8 py-3 text-lg font-semibold text-purple-600 transition-all hover:bg-purple-100 hover:shadow-lg"
         >
           Try Now
-        </a>
+        </button>
       </section>
 
       {/* Features Section */}
-      <section className="bg-white py-20">
+      
+      <section className="bg-white py-23">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             {/* Feature Card 1 */}
@@ -61,7 +93,7 @@ const About = () => {
       </section>
 
       {/* Benefits Section */}
-      <section className="bg-gray-50 py-20">
+      <section className="bg-gray-50 py-22">
         <div className="container mx-auto px-6">
           <h2 className="mb-12 text-center text-4xl font-bold text-gray-800">Key Benefits</h2>
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">

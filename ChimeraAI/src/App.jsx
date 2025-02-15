@@ -1,16 +1,19 @@
-import Navbar from './components/Navbar'
-import About from './pages/About'
-
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import About from './pages/About';
+import Dashboard from './pages/Dashboard';
+import Login from './pages/Login';
 import "./App.css"
 
-function App() {
-
+const App = () => {
   return (
-    <>
-    <Navbar />
-      <About />
-    </>
-  )
-}
+    <Router>
+      <Routes>
+        <Route path="/" element={<About />} />
+        <Route path="/dashboard/*" element={<Dashboard />} />
+        <Route path="/login" element={<Login/>} />
+      </Routes>
+    </Router>
+  );
+};
 
-export default App
+export default App;
