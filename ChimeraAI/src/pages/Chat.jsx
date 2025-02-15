@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../firebase/firebaseConfig';
 import ChatForm from '../components/ChatForm';
 import { onAuthStateChanged } from 'firebase/auth';
+import { FiTrash2 } from 'react-icons/fi'; // Add this for the trash icon
 
 // Add this helper function at the top of your component
 const truncateMessage = (message, wordLimit = 8) => {
@@ -68,6 +69,20 @@ const Chat = () => {
     navigate(`/dashboard/chat/${chatId}`);
   };
 
+  // Add this function to handle chat deletion
+  const handleDeleteChat = async (e, chatId, userEmail) => {
+    e.stopPropagation(); // Prevent chat selection when clicking delete
+    if (window.confirm('Are you sure you want to delete this chat?')) {
+      try {
+        const chatRef = doc(db, 'Chimera_AI', userEmail, 'Chats', chatId);
+        await deleteDoc(chatRef);
+        setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
+      } catch (error) {
+        console.error('Error deleting chat:', error);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -98,9 +113,18 @@ const Chat = () => {
                     {truncateMessage(chat.chatHistory?.[chat.chatHistory.length - 1]?.message)}
                   </p>
                 </div>
-                <span className="text-sm text-gray-500">
-                  {chat.updatedAt?.toDate().toLocaleDateString()}
-                </span>
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-500">
+                    {chat.updatedAt?.toDate().toLocaleDateString()}
+                  </span>
+                  <button
+                    onClick={(e) => handleDeleteChat(e, chat.id, auth.currentUser.email)}
+                    className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-gray-700"
+                    title="Delete chat"
+                  >
+                    <FiTrash2 size={18} />
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}
