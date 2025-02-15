@@ -6,7 +6,6 @@ import Chat from './Chat'
 import Home from './Home'
 import ChatWindow from '../components/ChatWindow'
 import Navbar from '../components/Navbar'
-import Settings from './Settings'
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -45,7 +44,6 @@ const Dashboard = () => {
                 <Route path="/" element={<Home />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/chat/:chatId" element={<ChatWindow />} />
-                <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<Navigate to="/" />} />
             </Routes>
         </div>

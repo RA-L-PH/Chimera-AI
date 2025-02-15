@@ -17,7 +17,8 @@ export const useNews = () => {
             headers: {
               'Origin': 'http://localhost:5007', // Simulate localhost origin
               'Referer': 'http://localhost:5007' // Simulate localhost referer
-            }
+            },
+            mode: 'cors',
           }
         );
         data = await response.json();
