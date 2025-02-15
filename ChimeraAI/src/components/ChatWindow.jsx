@@ -100,6 +100,8 @@ const ChatWindow = () => {
 
   // Add before handleSubmit
   const processParallel = async (message, chatRef, aiTimestamp) => {
+    const isFirstMessage = messages.length === 0;
+  
     const tempAiMessage = {
       id: Date.now().toString(),
       message: '',
@@ -115,7 +117,15 @@ const ChatWindow = () => {
       const responses = await Promise.all(
         chatData.modelIds.map(async (modelId) => {
           try {
-            const response = await ConstantAPI(modelId, message, () => {});
+            // Convert messages to array if needed
+            const messageHistory = isFirstMessage ? [] : Array.from(messages);
+            
+            const response = await ConstantAPI(
+              modelId, 
+              message,
+              messageHistory,
+              () => {}
+            );
             return {
               modelId,
               content: response.choices[0].message.content
@@ -186,6 +196,8 @@ const ChatWindow = () => {
 
   // Add this function before handleSubmit
   const processSeries = async (message, chatRef, aiTimestamp) => {
+    const isFirstMessage = messages.length === 0;
+  
     const tempAiMessage = {
       id: Date.now().toString(),
       message: '',
@@ -215,7 +227,7 @@ const ChatWindow = () => {
   
         try {
           // Process with current model (only show streaming for final model)
-          const response = await ConstantAPI(modelId, currentInput, (partialResponse) => {
+          const response = await ConstantAPI(modelId, currentInput, isFirstMessage ? [] : messages, (partialResponse) => {
             if (isLastModel) {
               // Only update UI for the last model's response
               setMessages(prev => 
@@ -280,6 +292,8 @@ const ChatWindow = () => {
 
   // Add this new function before handleSubmit
   const processFirstToFinish = async (message, chatRef, aiTimestamp) => {
+    const isFirstMessage = messages.length === 0;
+  
     const tempAiMessage = {
       id: Date.now().toString(),
       message: '',
@@ -296,15 +310,20 @@ const ChatWindow = () => {
       // Create a promise for each model
       const modelPromises = chatData.modelIds.map(async modelId => {
         try {
-          const response = await ConstantAPI(modelId, message, (partialResponse) => {
-            setMessages(prev => 
-              prev.map(msg => 
-                msg.id === tempAiMessage.id 
-                  ? { ...msg, message: partialResponse, modelId }
-                  : msg
-              )
-            );
-          });
+          const response = await ConstantAPI(
+            modelId, 
+            message,
+            isFirstMessage ? [] : messages, // Only pass history if not first message
+            (partialResponse) => {
+              setMessages(prev => 
+                prev.map(msg => 
+                  msg.id === tempAiMessage.id 
+                    ? { ...msg, message: partialResponse, modelId }
+                    : msg
+                )
+              );
+            }
+          );
           return { modelId, response };
         } catch (error) {
           console.error(`Error with model ${modelId}:`, error);
