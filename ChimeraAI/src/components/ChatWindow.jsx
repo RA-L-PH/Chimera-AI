@@ -616,7 +616,7 @@ const ChatWindow = () => {
   return (
     <div className={`flex flex-col h-screen bg-gray-900 ${isSmallScreen ? 'pl-0' : 'pl-20'}`}>
       {/* Responsive Header */}
-      <div className="bg-gray-800 py-2 sm:py-4 px-6 shadow-md">
+      <div className="bg-gray-800 py-2 pt-8 sm:py-4 px-6 shadow-md">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
           {/* Center chat name on mobile */}
           <h1 className="text-lg sm:text-xl font-semibold text-white w-full sm:w-auto text-center sm:text-left">
