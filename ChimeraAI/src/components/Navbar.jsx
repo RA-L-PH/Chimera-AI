@@ -212,7 +212,6 @@ const Navbar = () => {
         className={`
           fixed left-0 top-0 h-screen bg-white dark:bg-gray-800 shadow-lg
           transition-all duration-300 ease-in-out z-50
-          flex flex-col
           ${isCollapsed ? 'w-20' : 'w-64'}
           ${isMobile 
             ? isMobileMenuOpen 
@@ -281,11 +280,11 @@ const Navbar = () => {
           </nav>
 
           {/* Bottom section */}
-          <div className="p-4 mt-auto border-t border-gray-200 dark:border-gray-700 space-y-2">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
             <ProfileSection />
             <button 
               onClick={handleLogout}
-              className="flex items-center justify-center w-full p-2 rounded-md
+              className="flex items-center justify-center w-full mb-16 p-1 rounded-md
                         hover:bg-red-500 hover:text-white dark:hover:bg-red-600 
                         transition-colors duration-200 text-gray-700 dark:text-gray-200
                         space-x-2"
