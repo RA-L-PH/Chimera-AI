@@ -73,13 +73,6 @@ const AI_MODELS = {
       modelId: 'meta-llama/llama-3.2-11b-vision-instruct:free'
     },
     { 
-      id: 'gemini-thinking',
-      name: 'Gemini 2.0 Flash Thinking',
-      description: 'Advanced mathematical reasoning',
-      context: '1,048,576 tokens',
-      modelId: 'google/gemini-2.0-flash-thinking-exp:free'
-    },
-    { 
       id: 'learnlm',
       name: 'LearnLM 1.5 Pro',
       description: 'Educational mathematics processing',
@@ -129,13 +122,6 @@ const AI_MODELS = {
       description: 'Rapid code generation and review',
       context: '1,048,576 tokens',
       modelId: 'google/gemini-2.0-flash-exp:free'
-    },
-    { 
-      id: 'gemini-thinking-exp',
-      name: 'Gemini 2.0 Flash Thinking',
-      description: 'Advanced code reasoning',
-      context: '40,000 tokens',
-      modelId: 'google/gemini-2.0-flash-thinking-exp-1219:free'
     },
     { 
       id: 'phi-3-mini',
