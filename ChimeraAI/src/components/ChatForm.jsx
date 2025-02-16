@@ -62,6 +62,41 @@ const AI_MODELS = {
       description: 'Creative language generation',
       context: '4,096 tokens',
       modelId: 'gryphe/mythomax-l2-13b:free'
+    },
+    { 
+      id: 'mistral-small',
+      name: 'Mistral Small 3',
+      description: 'Advanced language understanding and generation',
+      context: '32,000 tokens',
+      modelId: 'mistralai/mistral-small-24b-instruct-2501:free'
+    },
+    { 
+      id: 'rogue-rose',
+      name: 'Rogue Rose 103B v0.2',
+      description: 'Large-scale language processing',
+      context: '4,096 tokens',
+      modelId: 'sophosympatheia/rogue-rose-103b-v0.2:free'
+    },
+    { 
+      id: 'mistral-nemo',
+      name: 'Mistral Nemo',
+      description: 'Balanced language processing',
+      context: '128,000 tokens',
+      modelId: 'mistralai/mistral-nemo:free'
+    },
+    { 
+      id: 'mistral-7b',
+      name: 'Mistral 7B Instruct',
+      description: 'Efficient instruction following',
+      context: '8,192 tokens',
+      modelId: 'mistralai/mistral-7b-instruct:free'
+    },
+    { 
+      id: 'zephyr-7b',
+      name: 'Hugging Face: Zephyr 7B',
+      description: 'Research-focused language model',
+      context: '4,096 tokens',
+      modelId: 'huggingfaceh4/zephyr-7b-beta:free'
     }
   ],
   math: [
@@ -106,6 +141,20 @@ const AI_MODELS = {
       description: 'Comprehensive mathematical analysis',
       context: '131,072 tokens',
       modelId: 'qwen/qwen2.5-vl-72b-instruct:free'
+    },
+    { 
+      id: 'gemini-flash-thinking',
+      name: 'Gemini 2.0 Flash Thinking',
+      description: 'Advanced mathematical reasoning',
+      context: '1,048,576 tokens',
+      modelId: 'google/gemini-2.0-flash-thinking-exp:free'
+    },
+    { 
+      id: 'gemini-flash-thinking-exp',
+      name: 'Gemini 2.0 Flash Thinking Exp',
+      description: 'Experimental mathematical processing',
+      context: '40,000 tokens',
+      modelId: 'google/gemini-2.0-flash-thinking-exp-1219:free'
     }
   ],
   code: [
@@ -150,6 +199,34 @@ const AI_MODELS = {
       description: 'Enhanced code generation capabilities',
       context: '7,500 tokens',
       modelId: 'qwen/qwen-vl-plus:free'
+    },
+    { 
+      id: 'dolphin-mistral',
+      name: 'Dolphin3.0 Mistral 24b',
+      description: 'Advanced code generation and analysis',
+      context: '32,768 tokens',
+      modelId: 'cognitivecomputations/dolphin3.0-mistral-24b:free'
+    },
+    { 
+      id: 'gemma-2',
+      name: 'Gemma 2 9B',
+      description: 'Efficient code generation',
+      context: '8,192 tokens',
+      modelId: 'google/gemma-2-9b-it:free'
+    },
+    { 
+      id: 'llama-3-8b',
+      name: 'Meta: Llama 3 8B Instruct',
+      description: 'Lightweight code assistance',
+      context: '8,192 tokens',
+      modelId: 'meta-llama/llama-3-8b-instruct:free'
+    },
+    { 
+      id: 'toppy-m',
+      name: 'Toppy M 7B',
+      description: 'Specialized code generation',
+      context: '4,096 tokens',
+      modelId: 'undi95/toppy-m-7b:free'
     }
   ]
 };
