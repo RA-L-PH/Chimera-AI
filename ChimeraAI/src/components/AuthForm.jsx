@@ -153,59 +153,59 @@ const AuthForm = () => {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="max-w-md mx-auto mt-8 p-6 bg-gray-900 rounded-lg shadow-lg text-white"
+      className="w-[95%] max-w-md mx-auto mt-4 sm:mt-8 p-4 sm:p-6 bg-gray-900 rounded-lg shadow-lg text-white"
     >
-      <h2 className="text-2xl font-bold mb-6 text-center text-white">
+      <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center text-white">
         {isLogin ? 'Login' : 'Register'}
       </h2>
       
       {!isLogin && (
         <div>
-          <label className="block text-sm font-medium mb-1 text-gray-300">Name</label>
+          <label className="block text-xs sm:text-sm font-medium mb-1 text-gray-300">Name</label>
           <input
             type="text"
             name="name"
             value={formData.name}
             onChange={handleInputChange}
-            className="w-full px-4 py-2 rounded-lg border border-gray-700 bg-gray-800 text-white 
-                     focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none 
-                     placeholder-gray-500"
+            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base rounded-lg border border-gray-700 
+                     bg-gray-800 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+                     outline-none placeholder-gray-500"
             placeholder="Enter your name"
           />
           {errors.name && (
-            <p className="text-red-400 text-sm mt-1">{errors.name}</p>
+            <p className="text-red-400 text-xs sm:text-sm mt-1">{errors.name}</p>
           )}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1 text-gray-300">Email</label>
+          <label className="block text-xs sm:text-sm font-medium mb-1 text-gray-300">Email</label>
           <input
             type="email"
             name="email"
             value={formData.email}
             onChange={handleInputChange}
-            className="w-full px-4 py-2 rounded-lg border border-gray-700 bg-gray-800 text-white 
-                     focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none 
-                     placeholder-gray-500"
+            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base rounded-lg border border-gray-700 
+                     bg-gray-800 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+                     outline-none placeholder-gray-500"
             placeholder="Enter your email"
           />
           {errors.email && (
-            <p className="text-red-400 text-sm mt-1">{errors.email}</p>
+            <p className="text-red-400 text-xs sm:text-sm mt-1">{errors.email}</p>
           )}
         </div>
 
         <div className="relative">
-          <label className="block text-sm font-medium mb-1 text-gray-300">Password</label>
+          <label className="block text-xs sm:text-sm font-medium mb-1 text-gray-300">Password</label>
           <input
             type={showPassword ? 'text' : 'password'}
             name="password"
             value={formData.password}
             onChange={handleInputChange}
-            className="w-full px-4 py-2 rounded-lg border border-gray-700 bg-gray-800 text-white 
-                     focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none 
-                     placeholder-gray-500"
+            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base rounded-lg border border-gray-700 
+                     bg-gray-800 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+                     outline-none placeholder-gray-500"
             placeholder="Enter your password"
           />
           <button
@@ -216,21 +216,21 @@ const AuthForm = () => {
             {showPassword ? <FaEyeSlash /> : <FaEye />}
           </button>
           {errors.password && (
-            <p className="text-red-400 text-sm mt-1">{errors.password}</p>
+            <p className="text-red-400 text-xs sm:text-sm mt-1">{errors.password}</p>
           )}
         </div>
 
         {!isLogin && (
           <div className="relative">
-            <label className="block text-sm font-medium mb-1 text-gray-300">Confirm Password</label>
+            <label className="block text-xs sm:text-sm font-medium mb-1 text-gray-300">Confirm Password</label>
             <input
               type={showPassword ? 'text' : 'password'}
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleInputChange}
-              className="w-full px-4 py-2 rounded-lg border border-gray-700 bg-gray-800 text-white 
-                       focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none 
-                       placeholder-gray-500"
+              className="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base rounded-lg border border-gray-700 
+                       bg-gray-800 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+                       outline-none placeholder-gray-500"
               placeholder="Confirm your password"
             />
             <button
@@ -241,19 +241,19 @@ const AuthForm = () => {
               {showPassword ? <FaEyeSlash /> : <FaEye />}
             </button>
             {errors.confirmPassword && (
-              <p className="text-red-400 text-sm mt-1">{errors.confirmPassword}</p>
+              <p className="text-red-400 text-xs sm:text-sm mt-1">{errors.confirmPassword}</p>
             )}
           </div>
         )}
 
         {errors.submit && (
-          <p className="text-red-400 text-sm text-center">{errors.submit}</p>
+          <p className="text-red-400 text-xs sm:text-sm text-center">{errors.submit}</p>
         )}
 
         <button
           type="submit"
           disabled={isLoading}
-          className={`w-full px-6 py-2 rounded-lg font-medium text-white
+          className={`w-full px-4 sm:px-6 py-1.5 sm:py-2 text-sm sm:text-base rounded-lg font-medium text-white
             ${isLoading 
               ? 'bg-gray-600 cursor-not-allowed' 
               : 'bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800'}
@@ -270,11 +270,11 @@ const AuthForm = () => {
           type="button"
           onClick={handleGoogleSignIn}
           disabled={isLoading}
-          className="w-full px-6 py-2 rounded-lg border border-gray-700 font-medium 
-                     text-gray-300 hover:bg-gray-800 transition-colors duration-200 
-                     flex items-center justify-center gap-2"
+          className="w-full px-4 sm:px-6 py-1.5 sm:py-2 text-sm sm:text-base rounded-lg border 
+                     border-gray-700 font-medium text-gray-300 hover:bg-gray-800 transition-colors 
+                     duration-200 flex items-center justify-center gap-2"
         >
-          <FaGoogle />
+          <FaGoogle className="text-sm sm:text-base" />
           Continue with Google
         </button>
 

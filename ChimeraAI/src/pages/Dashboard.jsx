@@ -28,7 +28,7 @@ const Dashboard = () => {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-screen bg-gray-900">
-                <div className="text-white">Loading...</div>
+                <div className="animate-pulse text-white text-lg sm:text-base">Loading...</div>
             </div>
         );
     }
@@ -38,14 +38,16 @@ const Dashboard = () => {
     }
     
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-gray-900">
             <Navbar />
-            <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/chat/:chatId" element={<ChatWindow />} />
-                <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
+            <div className="px-6 sm:px-3 py-4 sm:py-2">
+                <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/chat" element={<Chat />} />
+                    <Route path="/chat/:chatId" element={<ChatWindow />} />
+                    <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+            </div>
         </div>
     );
 };

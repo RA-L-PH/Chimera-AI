@@ -84,6 +84,9 @@ export default {
           '100%': { opacity: '1' },
         },
       },
+      screens: {
+        'xs': {'max': '400px'},
+      },
     },
   },
   plugins: [

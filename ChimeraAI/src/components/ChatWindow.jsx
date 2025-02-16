@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MessageBubble from './MessageBubble';
 import { motion } from 'framer-motion';
-import { FaPaperPlane } from 'react-icons/fa';
+import { FaPaperPlane, FaInfoCircle, FaTimes } from 'react-icons/fa';
 import { doc, getDoc, updateDoc, arrayUnion, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase/firebaseConfig';
 import ConstantAPI from '../utils/api'
@@ -50,6 +50,8 @@ const ChatWindow = () => {
   const [showCommands, setShowCommands] = useState(false);
   const [selectedCommand, setSelectedCommand] = useState(0);
   const [conversationContext, setConversationContext] = useState([]);
+  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth <= 640);
+  const [showFormattingHelp, setShowFormattingHelp] = useState(false);
 
   useEffect(() => {
     const loadChat = async () => {
@@ -97,6 +99,18 @@ const ChatWindow = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallScreen(window.innerWidth <= 640);
+      if (window.innerWidth > 640) {
+        setShowFormattingHelp(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Add before handleSubmit
   const processParallel = async (message, chatRef, aiTimestamp) => {
@@ -485,11 +499,22 @@ const ChatWindow = () => {
           return;
       }
     }
-    // ...rest of the function
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-      return;
+
+    // Handle Enter key differently for desktop and mobile
+    if (e.key === 'Enter') {
+      if (isSmallScreen) {
+        // Mobile: Enter creates new line
+        if (!e.shiftKey) {
+          return; // Allow default behavior for new line
+        }
+      } else {
+        // Desktop: Enter submits, Shift+Enter creates new line
+        if (!e.shiftKey) {
+          e.preventDefault();
+          handleSubmit(e);
+          return;
+        }
+      }
     }
 
     // Handle keyboard shortcuts
@@ -513,59 +538,48 @@ const ChatWindow = () => {
     }
   };
 
-  // Replace the existing handleTextareaInput function
+  // Update the handleTextareaInput function
   const handleTextareaInput = (e) => {
     const textarea = e.target;
-    const text = textarea.value;
+    let text = textarea.value;
+    const cursorPosition = textarea.selectionStart;
     
-    // Show commands when "/" is typed at the start of the input or after a space
-    if (text === '/' || text.match(/\s\/$/)) {
+    // Auto-complete markdown symbols
+    const markdownPairs = {
+      '*': '*',  // Italic
+      '**': '**', // Bold
+      '`': '`',   // Code
+    };
+  
+    for (const [symbol, completion] of Object.entries(markdownPairs)) {
+      if (text.slice(cursorPosition - symbol.length, cursorPosition) === symbol) {
+        text = text.slice(0, cursorPosition) + completion + text.slice(cursorPosition);
+        setInputMessage(text);
+  
+        requestAnimationFrame(() => {
+          textarea.selectionStart = cursorPosition;
+          textarea.selectionEnd = cursorPosition;
+        });
+  
+        return; // Prevent unnecessary reassignments
+      }
+    }
+  
+    setInputMessage(text);
+  
+    // Show commands when "/" is typed
+    if (text.endsWith('/')) {
       setShowCommands(true);
       setSelectedCommand(0);
     } else if (!text.includes('/')) {
       setShowCommands(false);
     }
-
-    let handled = false;
-
-    // Check for markdown shortcuts
-    const cursorPosition = textarea.selectionStart;
-    Object.entries(markdownShortcuts).forEach(([trigger, { template, offset }]) => {
-      if (text.slice(cursorPosition - trigger.length, cursorPosition) === trigger) {
-        e.preventDefault();
-        handled = true;
-
-        // Get selected text if any
-        const selectedText = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
-        
-        // Create new text with template
-        const beforeTrigger = text.slice(0, cursorPosition - trigger.length);
-        const afterTrigger = text.slice(cursorPosition);
-        const newText = beforeTrigger + template.replace('$1', selectedText) + afterTrigger;
-        
-        // Calculate new cursor position
-        const newPosition = cursorPosition - trigger.length + offset;
-        
-        // Update state and cursor position
-        setInputMessage(newText);
-        
-        // Set cursor position after render
-        requestAnimationFrame(() => {
-          textarea.selectionStart = newPosition;
-          textarea.selectionEnd = newPosition + selectedText.length;
-          textarea.focus();
-        });
-      }
-    });
-
-    // If no markdown shortcut was triggered, handle normal input
-    if (!handled) {
-      // Auto-resize textarea
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
-      setInputMessage(text);
-    }
+  
+    // Auto-resize textarea
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
   };
+  
 
   // Add this helper function for keyboard shortcuts
   const insertMarkdown = (trigger) => {
@@ -600,27 +614,36 @@ const ChatWindow = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 pl-20">
-      {/* Chat Header */}
-      <div className="bg-gray-800 p-4 shadow-md">
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-xl font-semibold text-white">{chatData.name}</h1>
-          <div className="flex items-center gap-4 text-sm text-gray-300 bg-gray-700 px-4 py-2 rounded-lg">
-            <span className="text-blue-400">Commands:</span>
-            <span>/parallel,</span>
-            <span>/series</span>
-            <span className="text-blue-400 ml-2">Format:</span>
-            <span>**bold**,</span>
-            <span>*italic*,</span>
-            <span>`code`</span>
-            <span className="text-gray-500">(Ctrl+B/I/E)</span>
-          </div>
+    <div className={`flex flex-col h-screen bg-gray-900 ${isSmallScreen ? 'pl-0' : 'pl-20'}`}>
+      {/* Responsive Header */}
+      <div className="bg-gray-800 p-2 sm:p-4 shadow-md">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
+          {/* Center chat name on mobile */}
+          <h1 className="text-lg sm:text-xl font-semibold text-white w-full sm:w-auto text-center sm:text-left">
+            {chatData.name}
+          </h1>
+          
+          {/* Show formatting info only on larger screens */}
+          {!isSmallScreen && (
+            <div className="flex items-center gap-4 text-sm text-gray-300 bg-gray-700 px-4 py-2 rounded-lg">
+              <span className="text-blue-400">Commands:</span>
+              <span>/parallel,</span>
+              <span>/series</span>
+              <span className="text-blue-400 ml-2">Format:</span>
+              <span>**bold**,</span>
+              <span>*italic*,</span>
+              <span>`code`</span>
+              <span className="text-gray-500">(Ctrl+B/I/E)</span>
+            </div>
+          )}
         </div>
-        <div className="flex gap-2 overflow-x-auto">
+
+        {/* Scrollable model tags */}
+        <div className="flex gap-2 overflow-x-auto py-2 -mx-2 px-2">
           {chatData.modelIds?.map((modelId, index) => (
             <span
               key={index}
-              className="px-2 py-1 bg-gray-700 rounded-full text-xs text-gray-300 whitespace-nowrap"
+              className="px-2 py-1 bg-gray-700 rounded-full text-xs text-gray-300 whitespace-nowrap flex-shrink-0"
             >
               {modelId.split('/').pop().replace(':free', '')}
             </span>
@@ -628,15 +651,8 @@ const ChatWindow = () => {
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-500 text-white p-3 m-4 rounded-lg">
-          {error}
-        </div>
-      )}
-
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
         {messages.map((msg) => (
           <MessageBubble
             key={msg.id}
@@ -659,48 +675,108 @@ const ChatWindow = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Form */}
-      <form onSubmit={handleSubmit} className="p-4 bg-gray-800">
-        {showCommands && (
-          <div className="absolute bottom-[80px] left-4 bg-gray-700 rounded-lg shadow-lg overflow-hidden ml-20">
-            {Object.entries(COMMANDS).map(([command, description], index) => (
-              <div
-                key={command}
-                className={`px-4 py-2 hover:bg-gray-600 cursor-pointer ${
-                  index === selectedCommand ? 'bg-gray-600' : ''
-                }`}
-                onClick={() => {
-                  setInputMessage(command + ' ');
-                  setShowCommands(false);
-                }}
+      {/* Mobile Formatting Help Modal */}
+      {isSmallScreen && showFormattingHelp && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:hidden">
+          <div className="w-full bg-gray-700 rounded-t-lg shadow-lg p-4 animate-slide-up">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-white font-semibold">Formatting Help</h3>
+              <button 
+                onClick={() => setShowFormattingHelp(false)}
+                className="text-gray-400 hover:text-white"
               >
-                <div className="text-white font-mono">{command}</div>
-                <div className="text-gray-400 text-sm">{description}</div>
+                <FaTimes size={20} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="text-gray-300">
+                <p className="flex items-center gap-2">
+                  <code className="bg-gray-800 px-2 py-1 rounded">**text**</code>
+                  <span>→</span>
+                  <strong>bold</strong>
+                  <span className="text-gray-400">(Ctrl+B)</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <code className="bg-gray-800 px-2 py-1 rounded">*text*</code>
+                  <span>→</span>
+                  <em>italic</em>
+                  <span className="text-gray-400">(Ctrl+I)</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <code className="bg-gray-800 px-2 py-1 rounded">`code`</code>
+                  <span>→</span>
+                  <code>code</code>
+                  <span className="text-gray-400">(Ctrl+E)</span>
+                </p>
               </div>
-            ))}
+            </div>
           </div>
-        )}
-        <div className="flex gap-4">
-          <textarea
-            value={inputMessage}
-            onChange={handleTextareaInput}
-            onKeyDown={handleKeyDown}
-            placeholder="Type '/' for commands or message..."
-            className="flex-1 px-4 py-2 rounded-lg bg-gray-700 text-white placeholder-gray-400 
-                     border border-gray-600 focus:outline-none focus:border-blue-500
-                     resize-none min-h-[44px] max-h-32 font-mono whitespace-pre-wrap"
-            rows={1}
-          />
+        </div>
+      )}
+
+      {/* Input Form */}
+      <form onSubmit={handleSubmit} className="p-2 sm:p-4 bg-gray-800">
+        <div className="relative flex gap-2 sm:gap-4 items-stretch">
+          {/* Command Suggestions Popup */}
+          {showCommands && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-50">
+              {Object.entries(COMMANDS).map(([command, description], index) => (
+                <button
+                  key={command}
+                  type="button"
+                  onClick={() => {
+                    setInputMessage(command + ' ');
+                    setShowCommands(false);
+                    document.querySelector('textarea').focus();
+                  }}
+                  className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-600
+                    ${selectedCommand === index ? 'bg-gray-600' : ''}
+                    ${index !== 0 ? 'border-t border-gray-600' : ''}`}
+                >
+                  <span className="text-blue-400 font-mono">{command}</span>
+                  <span className="text-gray-300 text-sm truncate">{description}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="relative flex-1">
+            {/* Info button - Mobile Only */}
+            {isSmallScreen && (
+              <button
+                type="button"
+                onClick={() => setShowFormattingHelp(!showFormattingHelp)}
+                className="absolute left-2 top-2 text-gray-400 hover:text-white transition-colors"
+                title="Formatting Help"
+              >
+                <FaInfoCircle size={20} />
+              </button>
+            )}
+            
+            <textarea
+              value={inputMessage}
+              onChange={handleTextareaInput}
+              onKeyDown={handleKeyDown}
+              placeholder="Type '/' for commands..."
+              className={`w-full rounded-lg bg-gray-700 text-white placeholder-gray-400 
+                       border border-gray-600 focus:outline-none focus:border-blue-500
+                       resize-none min-h-[40px] sm:min-h-[44px] max-h-32 text-sm sm:text-base 
+                       font-mono whitespace-pre-wrap
+                       ${isSmallScreen ? 'pl-10' : 'pl-3'} pr-3 py-2`}
+              rows={1}
+            />
+          </div>
+
           <button
             type="submit"
             disabled={!inputMessage.trim() || isTyping}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 self-end
+            className={`rounded-lg flex items-center justify-center min-h-[40px] sm:min-h-[44px] w-[40px] sm:w-[44px]
               ${(!inputMessage.trim() || isTyping)
                 ? 'bg-gray-600 cursor-not-allowed' 
                 : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:opacity-90'
               }`}
           >
-            <FaPaperPlane className="text-white" />
+            <FaPaperPlane className="text-white text-sm sm:text-base" />
           </button>
         </div>
       </form>
