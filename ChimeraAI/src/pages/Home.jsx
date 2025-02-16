@@ -2,16 +2,14 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import ChatForm from '../components/ChatForm';
-import { auth, db } from '../firebase/firebaseConfig';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { auth } from '../firebase/firebaseConfig';
+import { useNews } from '../hooks/useNews';
 
 const Home = () => {
   const [greeting, setGreeting] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [userName, setUserName] = useState('User');
-  const [news, setNews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { news, loading, error } = useNews();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,37 +34,6 @@ const Home = () => {
     } else {
       setGreeting('Good Evening');
     }
-  }, []);
-
-  const fetchNewsFromFirestore = async () => {
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error("User is not authenticated");
-      }
-
-      const newsRef = collection(db, 'News'); // Keep 'News' capitalized if that's your collection name
-      const snapshot = await getDocs(query(newsRef, orderBy('timestamp', 'desc'), limit(4)));
-      const newsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      if (newsData.length > 0) {
-        setNews(newsData);
-        setError(null);
-      } else {
-        throw new Error('No news articles found');
-      }
-    } catch (fetchError) {
-      console.error('Error fetching news from Firestore:', fetchError);
-      setError(fetchError.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchNewsFromFirestore();
-    const interval = setInterval(fetchNewsFromFirestore, 60 * 60 * 1000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleNewChat = () => {
@@ -101,9 +68,9 @@ const Home = () => {
             <div className="text-red-400 p-4 rounded-lg bg-red-900/20">{error}</div>
           ) : (
             <div className="space-y-4">
-              {news.map((item) => (
+              {news.map((item, index) => (
                 <motion.a
-                  key={item.id}
+                  key={index}
                   href={item.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -125,11 +92,9 @@ const Home = () => {
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
           <motion.button onClick={handleNewChat} whileHover={{ scale: 1.05 }} className="bg-gradient-to-r from-blue-500 to-blue-700 p-4 rounded-lg">
-            <i className="fas fa-plus-circle mr-2"></i>
             Start New Chat
           </motion.button>
           <motion.button onClick={() => navigate('/dashboard/chat')} whileHover={{ scale: 1.05 }} className="bg-gradient-to-r from-purple-500 to-purple-700 p-4 rounded-lg">
-            <i className="fas fa-history mr-2"></i>
             View Recent Chats
           </motion.button>
         </div>
