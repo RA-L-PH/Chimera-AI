@@ -359,7 +359,7 @@ const ChatForm = ({ onSubmit, onCancel }) => {
         updatedAt: serverTimestamp(),
         status: 'active'
       };
-      
+
       await setDoc(chatRef, chatData);
       onSubmit(chatData);
       navigate(`/dashboard/chat/${chatRef.id}`); // Update navigation path
@@ -401,15 +401,15 @@ const ChatForm = ({ onSubmit, onCancel }) => {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="max-w-6xl w-[95%] sm:w-11/12 mx-auto p-3 sm:p-6 bg-gray-900 rounded-lg shadow-lg text-white 
+      className="max-w-6xl w-11/12 mx-auto p-6 bg-gray-900 rounded-lg shadow-lg text-white 
                  relative max-h-[90vh] overflow-hidden"
       onClick={(e) => e.stopPropagation()}
     >
       <button
         onClick={onCancel}
-        className="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-400 hover:text-white"
+        className="absolute top-4 right-4 text-gray-400 hover:text-white"
       >
-        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
@@ -420,41 +420,16 @@ const ChatForm = ({ onSubmit, onCancel }) => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 mt-2 sm:mt-4"> 
-        {!isLoading && (
-          <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between bg-gray-800 p-2 sm:p-3 rounded-lg text-xs sm:text-sm">
-            <div className="mb-2 sm:mb-0">
-              <span className="text-gray-300">Current Tier: </span>
-              <span className={`font-semibold ${userTier === 'premium' ? 'text-gold-400' : 'text-blue-400'}`}>
-                {userTier.charAt(0).toUpperCase() + userTier.slice(1)}
-              </span>
-            </div>
-            <div className="text-gray-300">
-              {userTier === 'free' ? (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                  <span>Models: {selectedModels.length}/{TIER_LIMITS.free} max</span>
-                  <button 
-                    className="text-blue-400 hover:text-blue-300 underline"
-                    onClick={() => navigate('/pricing')}
-                  >
-                    Upgrade to Premium
-                  </button>
-                </div>
-              ) : (
-                `Models: ${selectedModels.length} selected`
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 mb-4 sm:mb-6">
+      <form onSubmit={handleSubmit} className="space-y-6 mt-4"> 
+        {!isLoading && <TierInfo />}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="flex-1">
             <input
               type="text"
               value={chatName}
               onChange={(e) => setChatName(e.target.value)}
               placeholder="Chat Name"
-              className="w-full px-3 sm:px-4 py-2 text-sm rounded-lg border border-gray-700 bg-gray-800 text-white 
+              className="w-full px-4 py-2 rounded-lg border border-gray-700 bg-gray-800 text-white 
                 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none 
                 placeholder-gray-500"
             />
@@ -465,12 +440,12 @@ const ChatForm = ({ onSubmit, onCancel }) => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search Models"
-              className="w-full px-3 sm:px-4 py-2 pl-8 sm:pl-10 text-sm rounded-lg border border-gray-700 bg-gray-800 
+              className="w-full px-4 py-2 pl-10 rounded-lg border border-gray-700 bg-gray-800 
                 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none 
                 placeholder-gray-500"
             />
             <svg
-              className="absolute left-2 sm:left-3 top-2.5 h-4 w-4 sm:h-5 sm:w-5 text-gray-500"
+              className="absolute left-3 top-2.5 h-5 w-5 text-gray-500"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -484,39 +459,37 @@ const ChatForm = ({ onSubmit, onCancel }) => {
             </svg>
           </div>
         </div>
+        <section className='h-100 overflow-y-scroll w-full p-4 bg-gray-800 rounded-lg'>
+        <ModelSection
+          title="Code Models"
+          models={AI_MODELS.code}
+          selectedModels={selectedModels}
+          onModelToggle={handleModelToggle}
+          searchTerm={searchTerm}
+        />
+        <ModelSection
+          title="Math Models"
+          models={AI_MODELS.math}
+          selectedModels={selectedModels}
+          onModelToggle={handleModelToggle}
+          searchTerm={searchTerm}
+        />
 
-        <section className='h-[45vh] sm:h-[50vh] overflow-y-auto w-full p-2 sm:p-4 bg-gray-800 rounded-lg'>
-          <div className="space-y-4 sm:space-y-8">
-            <ModelSection
-              title="Code Models"
-              models={AI_MODELS.code}
-              selectedModels={selectedModels}
-              onModelToggle={handleModelToggle}
-              searchTerm={searchTerm}
-            />
-            <ModelSection
-              title="Math Models"
-              models={AI_MODELS.math}
-              selectedModels={selectedModels}
-              onModelToggle={handleModelToggle}
-              searchTerm={searchTerm}
-            />
-            <ModelSection
-              title="English Models"
-              models={AI_MODELS.english}
-              selectedModels={selectedModels}
-              onModelToggle={handleModelToggle}
-              searchTerm={searchTerm}
-            />
-          </div>
+        <ModelSection
+          title="English Models"
+          models={AI_MODELS.english}
+          selectedModels={selectedModels}
+          onModelToggle={handleModelToggle}
+          searchTerm={searchTerm}
+        />
         </section>
 
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        <div className="flex gap-4">
           <button
             type="submit"
             disabled={!chatName || selectedModels.length === 0}
             className={`
-              w-full sm:flex-1 px-4 sm:px-6 py-2 rounded-lg font-medium text-sm sm:text-base text-white
+              flex-1 px-6 py-2 rounded-lg font-medium text-white
               ${!chatName || selectedModels.length === 0
                 ? 'bg-gray-600 cursor-not-allowed'
                 : 'bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800'}
@@ -528,8 +501,8 @@ const ChatForm = ({ onSubmit, onCancel }) => {
           <button
             type="button"
             onClick={onCancel}
-            className="w-full sm:flex-1 px-4 sm:px-6 py-2 rounded-lg border border-gray-700 font-medium 
-              text-sm sm:text-base text-gray-300 hover:bg-gray-800 transition-colors duration-200"
+            className="flex-1 px-6 py-2 rounded-lg border border-gray-700 font-medium 
+              text-gray-300 hover:bg-gray-800 transition-colors duration-200"
           >
             Cancel
           </button>

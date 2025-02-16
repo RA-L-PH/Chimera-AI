@@ -33,12 +33,12 @@ const Chat = () => {
           const chatsRef = collection(db, 'Chimera_AI', user.email, 'Chats');
           const chatsQuery = query(chatsRef, orderBy('updatedAt', 'desc'));
           const chatsSnap = await getDocs(chatsQuery);
-          
+
           const chatsData = chatsSnap.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           }));
-          
+
           setChats(chatsData);
         } catch (error) {
           console.error('Error loading chats:', error);
@@ -85,18 +85,18 @@ const Chat = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <main className="max-w-7xl mx-auto px-4 sm:px-3 py-8 sm:py-4">
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-8 sm:mb-4 space-y-4 sm:space-y-0">
-          <h2 className="text-2xl sm:text-xl font-semibold text-white">Recent Conversations</h2>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-2xl font-semibold text-white">Recent Conversations</h2>
           <button 
             onClick={handleNewChat}
-            className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:opacity-90 text-base sm:text-sm"
+            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:opacity-90"
           >
             New Chat
           </button>
         </div>
 
-        <div className="space-y-4 sm:space-y-2">
+        <div className="space-y-4">
           {chats.map((chat) => (
             <motion.div
               key={chat.id}
@@ -104,17 +104,17 @@ const Chat = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               whileHover={{ scale: 1.02 }}
-              className="bg-gray-800 rounded-lg p-4 sm:p-3 cursor-pointer hover:bg-gray-750"
+              className="bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-750"
             >
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
-                <div className="w-full sm:w-auto">
-                  <h3 className="text-lg sm:text-base font-medium text-white">{chat.name}</h3>
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-lg font-medium text-white">{chat.name}</h3>
                   <p className="text-gray-400 text-sm mt-1">
                     {truncateMessage(chat.chatHistory?.[chat.chatHistory.length - 1]?.message)}
                   </p>
                 </div>
-                <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
-                  <span className="text-sm text-gray-500 order-1 sm:order-none">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-500">
                     {chat.updatedAt?.toDate().toLocaleDateString()}
                   </span>
                   <button
@@ -122,7 +122,7 @@ const Chat = () => {
                     className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-gray-700"
                     title="Delete chat"
                   >
-                    <FiTrash2 size={16} className="sm:w-4 sm:h-4" />
+                    <FiTrash2 size={18} />
                   </button>
                 </div>
               </div>
@@ -131,20 +131,18 @@ const Chat = () => {
         </div>
 
         {chats.length === 0 && (
-          <div className="text-center py-12 sm:py-8">
-            <p className="text-gray-400 text-base sm:text-sm">No conversations yet. Start a new chat!</p>
+          <div className="text-center py-12">
+            <p className="text-gray-400">No conversations yet. Start a new chat!</p>
           </div>
         )}
 
         <AnimatePresence>
           {isFormOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-2">
-              <div className="w-full max-w-lg sm:max-w-[90%]">
-                <ChatForm 
-                  onSubmit={handleSubmit} 
-                  onCancel={() => setIsFormOpen(false)} 
-                />
-              </div>
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <ChatForm 
+                onSubmit={handleSubmit} 
+                onCancel={() => setIsFormOpen(false)} 
+              />
             </div>
           )}
         </AnimatePresence>

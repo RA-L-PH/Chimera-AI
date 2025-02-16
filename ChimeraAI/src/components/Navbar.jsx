@@ -6,10 +6,9 @@ import { PiChatsBold } from "react-icons/pi";
 import { signOutUser, auth } from '../firebase/firebaseConfig';
 import Logo from '../assets/ChimeraAI.png';
 import ChatForm from './ChatForm';
-import { IoMdMenu, IoMdClose } from 'react-icons/io';
 
 const Navbar = () => {
-  
+
   // Initialize isCollapsed from localStorage or default to false
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -19,7 +18,6 @@ const Navbar = () => {
   const sidebarRef = useRef(null);
   const [userProfile, setUserProfile] = useState(null);
   const [showChatForm, setShowChatForm] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -105,19 +103,15 @@ const Navbar = () => {
     });
   };
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(prev => !prev);
-  };
-
-  // Update the NavLink component
+  // Update the NavLink component for consistent icon sizing
   const NavLink = ({ href, children, icon, isProfileLink, isNewChat }) => (
     <div className="relative group">
       <a
         href={href}
-        className={`flex items-center space-x-3 
+        className={`flex items-center ${!isCollapsed ? 'space-x-3' : 'justify-center'} 
                   text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 
                   px-4 py-3 rounded-md transition-all duration-300 ease-in-out 
-                  transform hover:scale-105 ${!isCollapsed && !isMobile ? '' : isMobile ? 'space-x-3' : 'justify-center'}`}
+                  transform hover:scale-105`}
         onClick={(e) => {
           if (isNewChat) {
             handleNewChat(e);
@@ -130,12 +124,12 @@ const Navbar = () => {
         <div className={`flex-shrink-0 ${isProfileLink ? '' : 'w-6 h-6'}`}>
           {icon}
         </div>
-        {(!isCollapsed || isMobile) && (
+        {!isCollapsed && (
           <span className="transition-opacity duration-300 ease-in-out">
             {children}
           </span>
         )}
-        {isCollapsed && !isMobile && (
+        {isCollapsed && (
           <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 dark:bg-gray-700 
                         text-white text-sm rounded opacity-0 group-hover:opacity-100 
                         transition-opacity whitespace-nowrap z-50">
@@ -146,13 +140,12 @@ const Navbar = () => {
     </div>
   );
 
-  // Update the ProfileSection component
+  // Update the ProfileSection component to remove the settings link
   const ProfileSection = () => (
     <div className="relative group">
       <div 
-        className={`flex items-center space-x-3 
-                  text-gray-900 dark:text-white px-4 py-3 rounded-md
-                  ${!isCollapsed && !isMobile ? '' : isMobile ? 'space-x-3' : 'justify-center'}`}
+        className={`flex items-center ${!isCollapsed ? 'space-x-3' : 'justify-center'} 
+                  text-gray-900 dark:text-white px-4 py-3 rounded-md`}
       >
         <div className={`flex-shrink-0`}>
           {userProfile?.photoURL ? (
@@ -160,24 +153,24 @@ const Navbar = () => {
               src={userProfile.photoURL}
               alt={userProfile.displayName || "Profile"} 
               className={`object-cover border-2 border-gray-200 dark:border-gray-600 rounded-full
-                       ${isCollapsed && !isMobile ? 'w-6 h-6' : 'w-8 h-8'}`}
+                       ${isCollapsed ? 'w-6 h-6' : 'w-8 h-8'}`}
               referrerPolicy="no-referrer"
             />
           ) : (
             <div className={`flex items-center justify-center rounded-full bg-purple-600
-                          ${isCollapsed && !isMobile ? 'w-6 h-6' : 'w-8 h-8'}`}>
+                          ${isCollapsed ? 'w-6 h-6' : 'w-8 h-8'}`}>
               <span className="text-white text-sm font-medium">
-                {userProfile?.displayName?.charAt(0).toUpperCase() || <FaUser size={isCollapsed && !isMobile ? 16 : 20} />}
+                {userProfile?.displayName?.charAt(0).toUpperCase() || <FaUser size={isCollapsed ? 16 : 20} />}
               </span>
             </div>
           )}
         </div>
-        {(!isCollapsed || isMobile) && (
+        {!isCollapsed && (
           <span className="transition-opacity duration-300 ease-in-out">
             {userProfile?.displayName || "Profile"}
           </span>
         )}
-        {isCollapsed && !isMobile && (
+        {isCollapsed && (
           <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 dark:bg-gray-700 
                         text-white text-sm rounded opacity-0 group-hover:opacity-100 
                         transition-opacity whitespace-nowrap z-50">
@@ -190,80 +183,44 @@ const Navbar = () => {
 
   return (
     <>
-      {/* Mobile Menu Button - Only shows on small screens */}
-      <button
-        onClick={toggleMobileMenu}
-        className="fixed top-0 left-0 z-50 p-2 rounded-md bg-gray-800 text-white md:hidden"
-        aria-label="Toggle Menu"
-      >
-        <IoMdMenu size={24} />
-      </button>
-
       {/* Mobile overlay */}
-      {isMobile && isMobileMenuOpen && (
+      {isMobile && !isCollapsed && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={() => setIsMobileMenuOpen(false)}
+          onClick={() => setIsCollapsed(true)}
         />
       )}
 
       <aside 
         ref={sidebarRef}
-        className={`
+        className={`${isCollapsed ? 'w-20' : 'w-64'} 
+          ${isMobile ? (isCollapsed ? '-translate-x-full' : 'translate-x-0') : 'translate-x-0'}
           fixed left-0 top-0 h-screen bg-white dark:bg-gray-800 shadow-lg
-          transition-all duration-300 ease-in-out z-50
-          ${isCollapsed ? 'w-20' : 'w-64'}
-          ${isMobile 
-            ? isMobileMenuOpen 
-              ? 'translate-x-0' 
-              : '-translate-x-full'
-            : 'translate-x-0'}
-          ${isMobile ? 'w-[280px]' : ''}
-        `}
+          transition-all duration-500 ease-in-out z-50`}
       >
-        {/* Close button for mobile */}
-        {isMobile && (
-          <button
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="absolute top-4 right-4 p-2 rounded-md hover:bg-gray-700 text-gray-300"
-          >
-            <IoMdClose size={24} />
-          </button>
-        )}
-
-        {/* Rest of the sidebar content */}
+        {/* Rest of the sidebar content remains the same */}
         <div className="flex flex-col h-full">
-          {/* Modified header section */}
-          <div className={`
-  flex flex-col items-center justify-start p-4 space-y-4
-  ${isMobile ? 'pt-16' : ''}
-`}>
-  <a href="/" className="flex items-center justify-center">
-    <img 
-      className={`transition-all duration-500 ease-in-out ${
-        isCollapsed && !isMobile 
-          ? 'w-[4.5rem] h-[4.5rem] object-contain' // Increased size for collapsed mode
-          : 'h-20 w-auto'
-      }`} 
-      src={Logo} 
-      alt="ChimeraAI" 
-    />
-  </a>
-  {!isMobile && (
-    <button
-      onClick={toggleSidebar}
-      className={`p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 
-                transition-all duration-500 ease-in-out ${
-                  isCollapsed ? 'relative' : 'absolute right-2'
-                }`}
-    >
-      {isCollapsed ? 
-        <MdArrowForwardIos size={20} className="text-gray-600 dark:text-gray-300" /> : 
-        <MdArrowBackIos size={20} className="text-gray-600 dark:text-gray-300" />
-      }
-    </button>
-  )}
-</div>
+          <div className={`flex flex-col items-center p-4 ${isCollapsed ? 'space-y-4' : 'justify-between flex-row w-full'}`}>
+            <a href="/" className="flex items-center">
+              <img 
+                className={`transition-all duration-500 ease-in-out ${
+                  isCollapsed ? 'h-12 w-12' : 'h-20 w-auto'
+                }`} 
+                src={Logo} 
+                alt="ChimeraAI" 
+              />
+            </a>
+            <button
+              onClick={toggleSidebar}
+              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 
+                       transition-all duration-500 ease-in-out"
+            >
+              {isCollapsed ? 
+                <MdArrowForwardIos size={20} className="text-gray-600 dark:text-gray-300" /> : 
+                <MdArrowBackIos size={20} className="text-gray-600 dark:text-gray-300" />
+              }
+            </button>
+          </div>
 
           {/* Navigation links */}
           <nav className="flex-1 p-4 space-y-2">
@@ -284,24 +241,20 @@ const Navbar = () => {
             <ProfileSection />
             <button 
               onClick={handleLogout}
-              className="flex items-center justify-center w-full mb-16 p-1 rounded-md
+              className="flex items-center justify-center w-full p-2 rounded-md
                         hover:bg-red-500 hover:text-white dark:hover:bg-red-600 
-                        transition-colors duration-200 text-gray-700 dark:text-gray-200
-                        space-x-2"
+                        transition-colors duration-200 text-gray-700 dark:text-gray-200"
               aria-label="Logout"
             >
               <FaSignOutAlt size={20} />
-              {(!isCollapsed || isMobile) && <span>Logout</span>}
+              {!isCollapsed && <span className="ml-2">Logout</span>}
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main content wrapper - Updated margins */}
-      <main className={`
-        transition-all duration-300
-        ${isMobile ? 'ml-0 px-4' : isCollapsed ? 'ml-20' : 'ml-64'}
-      `}>
+      {/* Main content wrapper */}
+      <main className={`transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'} ${isMobile ? 'ml-0' : ''}`}>
         {/* Your main content goes here */}
       </main>
 
@@ -318,5 +271,6 @@ const Navbar = () => {
     </>
   );
 };
+
 
 export default Navbar;

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MessageBubble from './MessageBubble';
 import { motion } from 'framer-motion';
-import { FaPaperPlane, FaInfoCircle, FaTimes } from 'react-icons/fa';
+import { FaPaperPlane } from 'react-icons/fa';
 import { doc, getDoc, updateDoc, arrayUnion, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase/firebaseConfig';
 import ConstantAPI from '../utils/api'
@@ -50,8 +50,6 @@ const ChatWindow = () => {
   const [showCommands, setShowCommands] = useState(false);
   const [selectedCommand, setSelectedCommand] = useState(0);
   const [conversationContext, setConversationContext] = useState([]);
-  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth <= 640);
-  const [showFormattingHelp, setShowFormattingHelp] = useState(false);
 
   useEffect(() => {
     const loadChat = async () => {
@@ -100,22 +98,10 @@ const ChatWindow = () => {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    const handleResize = () => {
-      setIsSmallScreen(window.innerWidth <= 640);
-      if (window.innerWidth > 640) {
-        setShowFormattingHelp(false);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   // Add before handleSubmit
   const processParallel = async (message, chatRef, aiTimestamp) => {
     const isFirstMessage = messages.length === 0;
-  
+
     const tempAiMessage = {
       id: Date.now().toString(),
       message: '',
@@ -124,16 +110,16 @@ const ChatWindow = () => {
       modelId: chatData.modelIds[0], // Use first model as the synthesizer
       isStreaming: true
     };
-  
+
     setMessages(prev => [...prev, tempAiMessage]);
-  
+
     try {
       const responses = await Promise.all(
         chatData.modelIds.map(async (modelId) => {
           try {
             // Convert messages to array if needed
             const messageHistory = isFirstMessage ? [] : Array.from(messages);
-            
+
             const response = await ConstantAPI(
               modelId, 
               message,
@@ -150,14 +136,14 @@ const ChatWindow = () => {
           }
         })
       );
-  
+
       // Combine valid responses
       const validResponses = responses.filter(r => !r.error);
       if (validResponses.length > 0) {
         const combinedMessage = validResponses
           .map(r => `${r.modelId.split('/').pop()}:\n${r.content}`)
           .join('\n\n---\n\n');
-  
+
         // Synthesize final response using the first model
         const finalResponse = await ConstantAPI(
           chatData.modelIds[0],
@@ -173,21 +159,21 @@ const ChatWindow = () => {
             );
           }
         );
-  
+
         // Update final message
         const finalAiMessage = {
           ...tempAiMessage,
           message: finalResponse.choices[0].message.content,
           isStreaming: false
         };
-  
+
         // Update local state
         setMessages(prev => 
           prev.map(msg => 
             msg.id === tempAiMessage.id ? finalAiMessage : msg
           )
         );
-  
+
         // Update Firestore
         await updateDoc(chatRef, {
           chatHistory: arrayUnion({
@@ -196,10 +182,10 @@ const ChatWindow = () => {
           }),
           updatedAt: serverTimestamp()
         });
-  
+
         return finalResponse.choices[0].message.content;
       }
-      
+
       throw new Error('All parallel requests failed');
     } catch (error) {
       // Remove temporary message on error
@@ -211,7 +197,7 @@ const ChatWindow = () => {
   // Add this function before handleSubmit
   const processSeries = async (message, chatRef, aiTimestamp) => {
     const isFirstMessage = messages.length === 0;
-  
+
     const tempAiMessage = {
       id: Date.now().toString(),
       message: '',
@@ -220,25 +206,25 @@ const ChatWindow = () => {
       modelId: chatData.modelIds[0],
       isStreaming: true
     };
-  
+
     setMessages(prev => [...prev, tempAiMessage]);
-  
+
     try {
       let responses = {
         input: message
       };
-  
+
       for (let i = 0; i < chatData.modelIds.length; i++) {
         const modelId = chatData.modelIds[i];
         const modelName = modelId.split('/').pop().replace(':free', '');
         const isFirstModel = i === 0;
         const isLastModel = i === chatData.modelIds.length - 1;
-        
+
         // Prepare input for current model
         const currentInput = isFirstModel 
           ? responses.input 
           : `Enhance.\n\nPrevious response:\n${responses[`model${i-1}Response`]}`;
-  
+
         try {
           // Process with current model (only show streaming for final model)
           const response = await ConstantAPI(modelId, currentInput, isFirstMessage ? [] : messages, (partialResponse) => {
@@ -257,14 +243,14 @@ const ChatWindow = () => {
               );
             }
           });
-  
+
           if (!response?.choices?.[0]?.message?.content) {
             throw new Error(`No response from ${modelName}`);
           }
-  
+
           // Store intermediate response (not shown to user)
           responses[`model${i}Response`] = response.choices[0].message.content;
-  
+
           // Only update UI and save to Firestore for the final model
           if (isLastModel) {
             const finalResponse = response.choices[0].message.content;
@@ -274,14 +260,14 @@ const ChatWindow = () => {
               isStreaming: false,
               modelId: modelId
             };
-  
+
             // Update UI with final response
             setMessages(prev => 
               prev.map(msg => 
                 msg.id === tempAiMessage.id ? finalAiMessage : msg
               )
             );
-  
+
             // Save final response to Firestore
             await updateDoc(chatRef, {
               chatHistory: arrayUnion({
@@ -290,7 +276,7 @@ const ChatWindow = () => {
               }),
               updatedAt: serverTimestamp()
             });
-  
+
             return finalResponse;
           }
         } catch (error) {
@@ -307,7 +293,7 @@ const ChatWindow = () => {
   // Add this new function before handleSubmit
   const processFirstToFinish = async (message, chatRef, aiTimestamp) => {
     const isFirstMessage = messages.length === 0;
-    
+
     const tempAiMessage = {
       id: Date.now().toString(),
       message: '',
@@ -316,13 +302,13 @@ const ChatWindow = () => {
       modelId: chatData.modelIds[0],
       isStreaming: true
     };
-  
+
     setMessages(prev => [...prev, tempAiMessage]);
-  
+
     try {
       // Create an AbortController for each model
       const controllers = chatData.modelIds.map(() => new AbortController());
-      
+
       // Create a promise for each model
       const modelPromises = chatData.modelIds.map(async (modelId, index) => {
         try {
@@ -351,21 +337,21 @@ const ChatWindow = () => {
           return { modelId, error: true, index };
         }
       });
-  
+
       // Use Promise.race to get the first successful response
       const winner = await Promise.race(modelPromises);
-  
+
       // Cancel all other requests
       controllers.forEach((controller, index) => {
         if (index !== winner.index) {
           controller.abort();
         }
       });
-  
+
       if (winner.error) {
         throw new Error(`Failed to get response from ${winner.modelId}`);
       }
-  
+
       const finalResponse = winner.response.choices[0].message.content;
       const finalAiMessage = {
         ...tempAiMessage,
@@ -373,14 +359,14 @@ const ChatWindow = () => {
         isStreaming: false,
         modelId: winner.modelId
       };
-  
+
       // Update UI with final response
       setMessages(prev => 
         prev.map(msg => 
           msg.id === tempAiMessage.id ? finalAiMessage : msg
         )
       );
-  
+
       // Save to Firestore
       await updateDoc(chatRef, {
         chatHistory: arrayUnion({
@@ -389,7 +375,7 @@ const ChatWindow = () => {
         }),
         updatedAt: serverTimestamp()
       });
-  
+
       return finalResponse;
     } catch (error) {
       setMessages(prev => prev.filter(msg => msg.id !== tempAiMessage.id));
@@ -440,12 +426,12 @@ const ChatWindow = () => {
         const messageText = inputMessage.trim();
         const isParallel = messageText.startsWith('/parallel');
         const isSeries = messageText.startsWith('/series');
-        
+
         // Remove the command prefix and get the actual message
         const actualMessage = isParallel || isSeries 
           ? messageText.slice(messageText.indexOf(' ') + 1)
           : messageText;
-      
+
         // Choose processing method based on command
         let finalResponse;
         if (isParallel) {
@@ -456,7 +442,7 @@ const ChatWindow = () => {
           // Default to first-to-finish if no command is used
           finalResponse = await processFirstToFinish(actualMessage, chatRef, aiTimestamp);
         }
-        
+
         setConversationContext(prev => [...prev, {
           role: "assistant",
           content: finalResponse
@@ -499,22 +485,11 @@ const ChatWindow = () => {
           return;
       }
     }
-
-    // Handle Enter key differently for desktop and mobile
-    if (e.key === 'Enter') {
-      if (isSmallScreen) {
-        // Mobile: Enter creates new line
-        if (!e.shiftKey) {
-          return; // Allow default behavior for new line
-        }
-      } else {
-        // Desktop: Enter submits, Shift+Enter creates new line
-        if (!e.shiftKey) {
-          e.preventDefault();
-          handleSubmit(e);
-          return;
-        }
-      }
+    // ...rest of the function
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+      return;
     }
 
     // Handle keyboard shortcuts
@@ -538,48 +513,55 @@ const ChatWindow = () => {
     }
   };
 
-  // Update the handleTextareaInput function
+  // Replace the existing handleTextareaInput function
   const handleTextareaInput = (e) => {
     const textarea = e.target;
-    let text = textarea.value;
-    const cursorPosition = textarea.selectionStart;
-    
-    // Auto-complete markdown symbols
-    const markdownPairs = {
-      '*': '*',  // Italic
-      '**': '**', // Bold
-      '`': '`',   // Code
-    };
-  
-    for (const [symbol, completion] of Object.entries(markdownPairs)) {
-      if (text.slice(cursorPosition - symbol.length, cursorPosition) === symbol) {
-        text = text.slice(0, cursorPosition) + completion + text.slice(cursorPosition);
-        setInputMessage(text);
-  
-        requestAnimationFrame(() => {
-          textarea.selectionStart = cursorPosition;
-          textarea.selectionEnd = cursorPosition;
-        });
-  
-        return; // Prevent unnecessary reassignments
-      }
-    }
-  
-    setInputMessage(text);
-  
-    // Show commands when "/" is typed
-    if (text.endsWith('/')) {
+    const text = textarea.value;
+
+    // Show commands when "/" is typed at the start of the input or after a space
+    if (text === '/' || text.match(/\s\/$/)) {
       setShowCommands(true);
       setSelectedCommand(0);
     } else if (!text.includes('/')) {
       setShowCommands(false);
     }
-  
-    // Auto-resize textarea
-    textarea.style.height = 'auto';
-    textarea.style.height = `${textarea.scrollHeight}px`;
+    let handled = false;
+    // Check for markdown shortcuts
+    const cursorPosition = textarea.selectionStart;
+    Object.entries(markdownShortcuts).forEach(([trigger, { template, offset }]) => {
+      if (text.slice(cursorPosition - trigger.length, cursorPosition) === trigger) {
+        e.preventDefault();
+        handled = true;
+        // Get selected text if any
+        const selectedText = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
+        
+        // Create new text with template
+        const beforeTrigger = text.slice(0, cursorPosition - trigger.length);
+        const afterTrigger = text.slice(cursorPosition);
+        const newText = beforeTrigger + template.replace('$1', selectedText) + afterTrigger;
+        
+        // Calculate new cursor position
+        const newPosition = cursorPosition - trigger.length + offset;
+        
+        // Update state and cursor position
+        setInputMessage(newText);
+        
+        // Set cursor position after render
+        requestAnimationFrame(() => {
+          textarea.selectionStart = newPosition;
+          textarea.selectionEnd = newPosition + selectedText.length;
+          textarea.focus();
+        });
+      }
+    });
+    // If no markdown shortcut was triggered, handle normal input
+    if (!handled) {
+      // Auto-resize textarea
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+      setInputMessage(text);
+    }
   };
-  
 
   // Add this helper function for keyboard shortcuts
   const insertMarkdown = (trigger) => {
@@ -614,36 +596,27 @@ const ChatWindow = () => {
   }
 
   return (
-    <div className={`flex flex-col h-screen bg-gray-900 ${isSmallScreen ? 'pl-0' : 'pl-20'}`}>
-      {/* Responsive Header */}
-      <div className="bg-gray-800 py-2 pt-10 sm:py-4 px-6 shadow-md">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
-          {/* Center chat name on mobile */}
-          <h1 className="text-lg mt-5 sm:text-xl font-semibold text-white w-full sm:w-auto text-center sm:text-left">
-            {chatData.name}
-          </h1>
-          
-          {/* Show formatting info only on larger screens */}
-          {!isSmallScreen && (
-            <div className="flex items-center gap-4 text-sm text-gray-300 bg-gray-700 px-4 py-2 rounded-lg">
-              <span className="text-blue-400">Commands:</span>
-              <span>/parallel,</span>
-              <span>/series</span>
-              <span className="text-blue-400 ml-2">Format:</span>
-              <span>**bold**,</span>
-              <span>*italic*,</span>
-              <span>`code`</span>
-              <span className="text-gray-500">(Ctrl+B/I/E)</span>
-            </div>
-          )}
+    <div className="flex flex-col h-screen bg-gray-900 pl-20">
+      {/* Chat Header */}
+      <div className="bg-gray-800 p-4 shadow-md">
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-xl font-semibold text-white">{chatData.name}</h1>
+          <div className="flex items-center gap-4 text-sm text-gray-300 bg-gray-700 px-4 py-2 rounded-lg">
+            <span className="text-blue-400">Commands:</span>
+            <span>/parallel,</span>
+            <span>/series</span>
+            <span className="text-blue-400 ml-2">Format:</span>
+            <span>**bold**,</span>
+            <span>*italic*,</span>
+            <span>`code`</span>
+            <span className="text-gray-500">(Ctrl+B/I/E)</span>
+          </div>
         </div>
-
-        {/* Scrollable model tags - hidden on mobile */}
-        <div className="hidden sm:flex gap-2 overflow-x-auto py-2 -mx-2 px-2">
+        <div className="flex gap-2 overflow-x-auto">
           {chatData.modelIds?.map((modelId, index) => (
             <span
               key={index}
-              className="px-2 py-1 bg-gray-700 rounded-full text-xs text-gray-300 whitespace-nowrap flex-shrink-0"
+              className="px-2 py-1 bg-gray-700 rounded-full text-xs text-gray-300 whitespace-nowrap"
             >
               {modelId.split('/').pop().replace(':free', '')}
             </span>
@@ -651,8 +624,14 @@ const ChatWindow = () => {
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-500 text-white p-3 m-4 rounded-lg">
+          {error}
+        </div>
+      )}
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
           <MessageBubble
             key={msg.id}
@@ -675,123 +654,48 @@ const ChatWindow = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Mobile Formatting Help Modal */}
-      {isSmallScreen && showFormattingHelp && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:hidden">
-          <div className="w-full bg-gray-800 rounded-t-2xl shadow-lg p-4 max-h-[60vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-white text-lg font-medium">Formatting Tips</h3>
-              <button 
-                onClick={() => setShowFormattingHelp(false)}
-                className="p-2 text-gray-400 hover:text-white"
-              >
-                <FaTimes size={18} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <h4 className="text-blue-400 text-sm font-medium">Commands</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-gray-700 p-2 rounded">
-                    <code className="text-sm text-blue-400">/parallel</code>
-                    <p className="text-xs text-gray-300 mt-1">Process models simultaneously</p>
-                  </div>
-                  <div className="bg-gray-700 p-2 rounded">
-                    <code className="text-sm text-blue-400">/series</code>
-                    <p className="text-xs text-gray-300 mt-1">Process models in sequence</p>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-blue-400 text-sm font-medium">Text Formatting</h4>
-                <div className="grid gap-2">
-                  <div className="bg-gray-700 p-2 rounded flex items-center justify-between">
-                    <code className="text-sm">**bold**</code>
-                    <span className="text-xs text-gray-400">Double tap * key</span>
-                  </div>
-                  <div className="bg-gray-700 p-2 rounded flex items-center justify-between">
-                    <code className="text-sm">*italic*</code>
-                    <span className="text-xs text-gray-400">Single tap * key</span>
-                  </div>
-                  <div className="bg-gray-700 p-2 rounded flex items-center justify-between">
-                    <code className="text-sm">`code`</code>
-                    <span className="text-xs text-gray-400">Tap ` key</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="py-2 sm:py-4 px-6 bg-gray-800">
-        <div className="relative flex gap-2 sm:gap-4 items-stretch">
-          {/* Command Suggestions Popup */}
-          {showCommands && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-700 rounded-lg shadow-lg overflow-hidden z-50">
-              {Object.entries(COMMANDS).map(([command, description], index) => (
-                <button
-                  key={command}
-                  type="button"
-                  onClick={() => {
-                    setInputMessage(command + ' ');
-                    setShowCommands(false);
-                    document.querySelector('textarea').focus();
-                  }}
-                  className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-600
-                    ${selectedCommand === index ? 'bg-gray-600' : ''}
-                    ${index !== 0 ? 'border-t border-gray-600' : ''}`}
-                >
-                  <span className="text-blue-400 font-mono">{command}</span>
-                  <span className="text-gray-300 text-sm truncate">{description}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="relative flex-1">
-            {/* Info button - Mobile Only */}
-            {isSmallScreen && (
-              <button
-                type="button"
-                onClick={() => setShowFormattingHelp(!showFormattingHelp)}
-                className="absolute left-3 top-3 text-gray-400 hover:text-white transition-colors z-10"
-                title="Formatting Help"
+      <form onSubmit={handleSubmit} className="p-4 bg-gray-800">
+        {showCommands && (
+          <div className="absolute bottom-[80px] left-4 bg-gray-700 rounded-lg shadow-lg overflow-hidden ml-20">
+            {Object.entries(COMMANDS).map(([command, description], index) => (
+              <div
+                key={command}
+                className={`px-4 py-2 hover:bg-gray-600 cursor-pointer ${
+                  index === selectedCommand ? 'bg-gray-600' : ''
+                }`}
+                onClick={() => {
+                  setInputMessage(command + ' ');
+                  setShowCommands(false);
+                }}
               >
-                <FaInfoCircle size={18} />
-              </button>
-            )}
-            
-            <textarea
-              value={inputMessage}
-              onChange={handleTextareaInput}
-              onKeyDown={handleKeyDown}
-              placeholder="Type '/' for commands..."
-              className={`w-full rounded-lg bg-gray-700 text-white placeholder-gray-400 
-                       border border-gray-600 focus:outline-none focus:border-blue-500
-                       resize-none min-h-[44px] max-h-32 
-                       text-[15px] leading-[1.4]
-                       font-mono whitespace-pre-wrap
-                       ${isSmallScreen ? 'pl-10' : 'pl-3'} pr-3 py-2.5`}
-              style={{
-                fontSize: isSmallScreen ? '15px' : '16px',
-                lineHeight: '1.4'
-              }}
-              rows={1}
-            />
+                <div className="text-white font-mono">{command}</div>
+                <div className="text-gray-400 text-sm">{description}</div>
+              </div>
+            ))}
           </div>
-
+        )}
+        <div className="flex gap-4">
+          <textarea
+            value={inputMessage}
+            onChange={handleTextareaInput}
+            onKeyDown={handleKeyDown}
+            placeholder="Type '/' for commands or message..."
+            className="flex-1 px-4 py-2 rounded-lg bg-gray-700 text-white placeholder-gray-400 
+                     border border-gray-600 focus:outline-none focus:border-blue-500
+                     resize-none min-h-[44px] max-h-32 font-mono whitespace-pre-wrap"
+            rows={1}
+          />
           <button
             type="submit"
             disabled={!inputMessage.trim() || isTyping}
-            className={`rounded-lg flex items-center justify-center min-h-[40px] sm:min-h-[44px] w-[40px] sm:w-[44px]
+            className={`px-4 py-2 rounded-lg flex items-center gap-2 self-end
               ${(!inputMessage.trim() || isTyping)
                 ? 'bg-gray-600 cursor-not-allowed' 
                 : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:opacity-90'
               }`}
           >
-            <FaPaperPlane className="text-white text-sm sm:text-base" />
+            <FaPaperPlane className="text-white" />
           </button>
         </div>
       </form>

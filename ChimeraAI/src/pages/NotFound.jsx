@@ -16,7 +16,7 @@ const NotFound = () => {
       /BlackBerry/i,
       /Windows Phone/i
     ];
-    
+
     return toMatch.some((toMatchItem) => {
       return navigator.userAgent.match(toMatchItem);
     });
@@ -27,7 +27,9 @@ const NotFound = () => {
   }, []);
 
   const handleTryAgain = () => {
-    navigate('/');
+    if (!isMobile) {
+      navigate('/');
+    }
   };
 
   return (
@@ -39,16 +41,17 @@ const NotFound = () => {
           className="mx-auto h-32 w-auto mb-6"
         />
         <h1 className="text-4xl font-bold text-gray-800 mb-4">
-          Page Not Found
+          Mobile View Not Supported
         </h1>
         <p className="text-gray-600 mb-8">
-          The page you are looking for doesn't exist or has been moved.
+          Please switch to desktop mode or use a laptop/desktop computer to access Chimera AI.
+          Mobile view is currently not supported.
         </p>
         <button
           onClick={handleTryAgain}
           className="inline-block rounded-full bg-purple-600 px-8 py-3 text-lg font-semibold text-white transition-all hover:bg-purple-700 hover:shadow-lg"
         >
-          Go Home
+          Switch to Desktop
         </button>
       </div>
     </div>

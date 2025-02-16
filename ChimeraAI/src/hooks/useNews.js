@@ -28,6 +28,17 @@ export const useNews = () => {
 
   const fetchAndUpdateNews = async (isScheduledUpdate = false) => {
     try {
+      // Add rate limiting check
+      const lastAttempt = localStorage.getItem('lastNewsAttempt');
+      if (lastAttempt) {
+        const timeSinceLastAttempt = new Date().getTime() - new Date(lastAttempt).getTime();
+        if (timeSinceLastAttempt < 60000) { // 1 minute
+          console.log('Too many requests, waiting...');
+          return;
+        }
+      }
+      localStorage.setItem('lastNewsAttempt', new Date().toISOString());
+
       console.log('Fetching news...', { isScheduledUpdate, time: new Date().toLocaleString() });
       const newsRef = collection(db, 'News');
 
@@ -71,7 +82,11 @@ export const useNews = () => {
       localStorage.setItem('lastNewsUpdate', updateTime.toISOString());
       console.log('News updated successfully at:', updateTime.toLocaleString());
     } catch (error) {
-      console.error('Error fetching/updating news:', error);
+      console.error('Error details:', {
+        message: error.message,
+        time: new Date().toLocaleString(),
+        lastUpdate: lastUpdateTime?.toLocaleString()
+      });
       setError(error.message);
     } finally {
       setLoading(false);
@@ -79,22 +94,32 @@ export const useNews = () => {
   };
 
   useEffect(() => {
+    console.log('useNews hook mounted', {
+      lastUpdateTime: lastUpdateTime?.toLocaleString(),
+      currentTime: new Date().toLocaleString()
+    });
+    
     const checkAndFetchNews = () => {
       const now = new Date();
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
 
-      // Check if it's time to update
-      const shouldUpdate = UPDATE_HOURS.includes(currentHour) && currentMinute === 0;
+      // More flexible update window - check within first 5 minutes of target hours
+      const shouldUpdate = UPDATE_HOURS.includes(currentHour) && currentMinute <= 5;
 
       if (shouldUpdate) {
         const timeSinceLastUpdate = lastUpdateTime
           ? now.getTime() - lastUpdateTime.getTime()
           : Infinity;
 
-        // Update if no previous update or if it's been at least 5.9 hours
-        if (timeSinceLastUpdate >= 5.9 * 60 * 60 * 1000) {
-          console.log('Triggering scheduled update...');
+        // Prevent multiple updates within the same hour
+        const minimumUpdateInterval = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
+        if (timeSinceLastUpdate >= minimumUpdateInterval) {
+          console.log('Triggering scheduled update...', {
+            currentTime: now.toLocaleString(),
+            lastUpdate: lastUpdateTime?.toLocaleString(),
+            timeSinceLastUpdate: Math.round(timeSinceLastUpdate / (60 * 60 * 1000)) + ' hours'
+          });
           fetchAndUpdateNews(true);
         }
       }

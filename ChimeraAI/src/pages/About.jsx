@@ -7,9 +7,27 @@ import { onAuthStateChanged } from 'firebase/auth';
 const About = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const checkMobile = () => {
+    const toMatch = [
+      /Android/i,
+      /webOS/i,
+      /iPhone/i,
+      /iPad/i,
+      /iPod/i,
+      /BlackBerry/i,
+      /Windows Phone/i
+    ];
+    
+    return toMatch.some((toMatchItem) => {
+      return navigator.userAgent.match(toMatchItem);
+    });
+  };
 
   const handleTryNowClick = () => {
-    if (auth.currentUser) {
+    if (isMobile) {
+      navigate('/not-found');
+    } else if (auth.currentUser) {
       navigate('/dashboard');
     } else {
       navigate('/login');
@@ -17,6 +35,7 @@ const About = () => {
   };
 
   useEffect(() => {
+    setIsMobile(checkMobile());
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setLoading(false);
     });
