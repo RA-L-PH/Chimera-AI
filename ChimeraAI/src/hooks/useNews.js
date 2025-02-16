@@ -20,23 +20,16 @@ export const useNews = () => {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [lastUpdateTime, setLastUpdateTime] = useState(() => {
+    // Get stored last update time from localStorage
+    const stored = localStorage.getItem('lastNewsUpdate');
+    return stored ? new Date(stored) : null;
+  });
 
   const fetchAndUpdateNews = async (isScheduledUpdate = false) => {
     try {
-      console.log('Fetching news...', { isScheduledUpdate });
+      console.log('Fetching news...', { isScheduledUpdate, time: new Date().toLocaleString() });
       const newsRef = collection(db, 'News');
-
-      // Only check Firestore for initial load, not for scheduled updates
-      if (!isScheduledUpdate) {
-        const snapshot = await getDocs(query(newsRef, orderBy('timestamp', 'desc'), limit(4)));
-        if (!snapshot.empty) {
-          const newsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setNews(newsData);
-          setLoading(false);
-          return;
-        }
-      }
 
       // Fetch new articles from GNews
       const response = await fetch(GNEWS_URL);
@@ -57,23 +50,26 @@ export const useNews = () => {
         publishedAt: article.publishedAt,
         source: article.source.name,
         category: 'technology',
-        timestamp: new Date()
+        timestamp: new Date(),
+        id: `article-${index + 1}`
       }));
 
-      // Clear existing articles before adding new ones
+      // Clear existing articles
       const existingDocs = await getDocs(newsRef);
       await Promise.all(existingDocs.docs.map(doc => deleteDoc(doc.ref)));
 
-      // Store new articles
+      // Store new articles with fixed IDs
       await Promise.all(
-        formattedArticles.map((article, index) => 
-          setDoc(doc(newsRef, `article-${index + 1}`), article)
+        formattedArticles.map(article => 
+          setDoc(doc(newsRef, article.id), article)
         )
       );
 
       setNews(formattedArticles);
-      setLastUpdateTime(new Date());
-      setError(null);
+      const updateTime = new Date();
+      setLastUpdateTime(updateTime);
+      localStorage.setItem('lastNewsUpdate', updateTime.toISOString());
+      console.log('News updated successfully at:', updateTime.toLocaleString());
     } catch (error) {
       console.error('Error fetching/updating news:', error);
       setError(error.message);
@@ -83,29 +79,48 @@ export const useNews = () => {
   };
 
   useEffect(() => {
-    const checkTimeAndFetch = async () => {
+    const checkAndFetchNews = () => {
       const now = new Date();
-      const hours = now.getHours();
-      const minutes = now.getMinutes();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
 
-      if (minutes === 0 && UPDATE_HOURS.includes(hours)) {
-        // Only update if 5.9 hours have passed since last update
-        if (!lastUpdateTime || 
-            now.getTime() - lastUpdateTime.getTime() >= 5.9 * 60 * 60 * 1000) {
-          console.log('Scheduled update triggered...');
-          await fetchAndUpdateNews(true);
+      // Check if it's time to update
+      const shouldUpdate = UPDATE_HOURS.includes(currentHour) && currentMinute === 0;
+
+      if (shouldUpdate) {
+        const timeSinceLastUpdate = lastUpdateTime
+          ? now.getTime() - lastUpdateTime.getTime()
+          : Infinity;
+
+        // Update if no previous update or if it's been at least 5.9 hours
+        if (timeSinceLastUpdate >= 5.9 * 60 * 60 * 1000) {
+          console.log('Triggering scheduled update...');
+          fetchAndUpdateNews(true);
         }
       }
     };
 
-    // Initial fetch
-    fetchAndUpdateNews(false);
+    // Initial fetch if needed
+    const initialFetch = async () => {
+      const newsRef = collection(db, 'News');
+      const snapshot = await getDocs(query(newsRef, orderBy('timestamp', 'desc'), limit(4)));
+      
+      if (snapshot.empty || !lastUpdateTime) {
+        console.log('Performing initial fetch...');
+        await fetchAndUpdateNews(false);
+      } else {
+        const newsData = snapshot.docs.map(doc => doc.data());
+        setNews(newsData);
+        setLoading(false);
+      }
+    };
 
-    // Check every minute for scheduled updates
-    const interval = setInterval(checkTimeAndFetch, 60 * 1000);
+    initialFetch();
 
+    // Check every minute
+    const interval = setInterval(checkAndFetchNews, 60 * 1000);
     return () => clearInterval(interval);
-  }, [lastUpdateTime]); // Add lastUpdateTime as dependency
+  }, [lastUpdateTime]);
 
   return { news, loading, error, lastUpdateTime };
 };
