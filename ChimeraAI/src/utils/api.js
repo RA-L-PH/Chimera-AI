@@ -1,6 +1,6 @@
 import { getApiKey } from './getApiKey';
 
-const ConstantAPI = async (model, message, conversationHistory = [], onChunk) => {
+const ConstantAPI = async (model, message, conversationHistory = [], onChunk, signal) => {
   try {
     const apiKey = await getApiKey();
     
@@ -36,7 +36,8 @@ const ConstantAPI = async (model, message, conversationHistory = [], onChunk) =>
         model,
         messages,
         stream: !!onChunk
-      })
+      }),
+      signal // Add abort signal
     });
 
     if (!response.ok) {
@@ -80,6 +81,9 @@ const ConstantAPI = async (model, message, conversationHistory = [], onChunk) =>
     }
     
   } catch (error) {
+    if (error.name === 'AbortError') {
+      throw error; // Re-throw abort errors
+    }
     console.error('API call failed:', error);
     throw error;
   }

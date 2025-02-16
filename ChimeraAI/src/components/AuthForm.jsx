@@ -4,7 +4,7 @@ import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { signInWithGoogle, signInWithEmail, registerWithEmail } from '../firebase/firebaseConfig';
-import { doc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, collection, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 
 const initialFormState = {
@@ -47,34 +47,42 @@ const createUserDocument = async (user, additionalData = {}) => {
   if (!user) throw new Error('No user provided');
 
   try {
-    // Create reference using encodeURIComponent for collection name with space
     const collectionName = encodeURIComponent('Chimera_AI');
     const userRef = doc(db, collectionName, user.email);
     
-    const displayName = user.displayName || additionalData.name || user.email.split('@')[0];
+    // First, check if the document already exists
+    const userDoc = await getDoc(userRef);
     
-    const userData = {
-      uid: user.uid,
-      email: user.email,
-      displayName: displayName,
-      photoURL: user.photoURL || null,
-      createdAt: serverTimestamp(), // Use server timestamp
-      lastLogin: serverTimestamp(),
-      chats: [],
-      settings: {
-        theme: 'dark',
-        notifications: true
-      },
-      tier: 'free', // Added default tier for new users
-      ...additionalData
-    };
-
-    // Use merge option to update existing documents
-    await setDoc(userRef, userData, { merge: true });
+    if (!userDoc.exists()) {
+      // New user - set initial data including 'free' tier
+      const displayName = user.displayName || additionalData.name || user.email.split('@')[0];
+      const userData = {
+        uid: user.uid,
+        email: user.email,
+        displayName: displayName,
+        photoURL: user.photoURL || null,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+        chats: [],
+        settings: {
+          theme: 'dark',
+          notifications: true
+        },
+        tier: 'free',
+        ...additionalData
+      };
+      await setDoc(userRef, userData);
+    } else {
+      // Existing user - only update lastLogin
+      await updateDoc(userRef, {
+        lastLogin: serverTimestamp()
+      });
+    }
+    
     return userRef;
   } catch (error) {
-    console.error('Error creating user document:', error);
-    throw new Error('Failed to create user profile. Please try again.');
+    console.error('Error creating/updating user document:', error);
+    throw new Error('Failed to create/update user profile. Please try again.');
   }
 };
 

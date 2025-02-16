@@ -187,6 +187,7 @@ const ModelCard = ({ model, selected, onToggle }) => (
       type="checkbox"
       checked={selected}
       className="absolute top-4 right-4 h-5 w-5 accent-blue-500"
+      onClick={(e) => e.stopPropagation()} // Prevent double triggering
       onChange={() => onToggle(model.id)}
     />
     <h3 className="text-lg font-semibold mb-2 pr-8 text-white">{model.name}</h3>

@@ -293,7 +293,7 @@ const ChatWindow = () => {
   // Add this new function before handleSubmit
   const processFirstToFinish = async (message, chatRef, aiTimestamp) => {
     const isFirstMessage = messages.length === 0;
-  
+    
     const tempAiMessage = {
       id: Date.now().toString(),
       message: '',
@@ -303,17 +303,19 @@ const ChatWindow = () => {
       isStreaming: true
     };
   
-    // Add temporary message to state
     setMessages(prev => [...prev, tempAiMessage]);
   
     try {
+      // Create an AbortController for each model
+      const controllers = chatData.modelIds.map(() => new AbortController());
+      
       // Create a promise for each model
-      const modelPromises = chatData.modelIds.map(async modelId => {
+      const modelPromises = chatData.modelIds.map(async (modelId, index) => {
         try {
           const response = await ConstantAPI(
             modelId, 
             message,
-            isFirstMessage ? [] : messages, // Only pass history if not first message
+            isFirstMessage ? [] : messages,
             (partialResponse) => {
               setMessages(prev => 
                 prev.map(msg => 
@@ -322,17 +324,29 @@ const ChatWindow = () => {
                     : msg
                 )
               );
-            }
+            },
+            controllers[index].signal // Pass signal to API
           );
-          return { modelId, response };
+          return { modelId, response, index };
         } catch (error) {
+          if (error.name === 'AbortError') {
+            console.log(`Request for ${modelId} was cancelled`);
+            return { modelId, error: 'cancelled', index };
+          }
           console.error(`Error with model ${modelId}:`, error);
-          return { modelId, error: true };
+          return { modelId, error: true, index };
         }
       });
   
       // Use Promise.race to get the first successful response
       const winner = await Promise.race(modelPromises);
+  
+      // Cancel all other requests
+      controllers.forEach((controller, index) => {
+        if (index !== winner.index) {
+          controller.abort();
+        }
+      });
   
       if (winner.error) {
         throw new Error(`Failed to get response from ${winner.modelId}`);
@@ -364,7 +378,6 @@ const ChatWindow = () => {
   
       return finalResponse;
     } catch (error) {
-      // Clean up temporary message on error
       setMessages(prev => prev.filter(msg => msg.id !== tempAiMessage.id));
       throw error;
     }
