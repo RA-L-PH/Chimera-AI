@@ -40,7 +40,7 @@ const Dashboard = () => {
     return (
         <div className="min-h-screen bg-gray-900">
             <Navbar />
-            <div className="px-6 sm:px-3 py-4 sm:py-2">
+            <div className="">
                 <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/chat" element={<Chat />} />

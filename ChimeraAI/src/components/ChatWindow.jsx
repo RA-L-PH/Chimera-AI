@@ -616,7 +616,7 @@ const ChatWindow = () => {
   return (
     <div className={`flex flex-col h-screen bg-gray-900 ${isSmallScreen ? 'pl-0' : 'pl-20'}`}>
       {/* Responsive Header */}
-      <div className="bg-gray-800 p-2 sm:p-4 shadow-md">
+      <div className="bg-gray-800 py-2 sm:py-4 px-6 shadow-md">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
           {/* Center chat name on mobile */}
           <h1 className="text-lg sm:text-xl font-semibold text-white w-full sm:w-auto text-center sm:text-left">
@@ -678,36 +678,46 @@ const ChatWindow = () => {
       {/* Mobile Formatting Help Modal */}
       {isSmallScreen && showFormattingHelp && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:hidden">
-          <div className="w-full bg-gray-700 rounded-t-lg shadow-lg p-4 animate-slide-up">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-white font-semibold">Formatting Help</h3>
+          <div className="w-full bg-gray-800 rounded-t-2xl shadow-lg p-4 max-h-[60vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-white text-lg font-medium">Formatting Tips</h3>
               <button 
                 onClick={() => setShowFormattingHelp(false)}
-                className="text-gray-400 hover:text-white"
+                className="p-2 text-gray-400 hover:text-white"
               >
-                <FaTimes size={20} />
+                <FaTimes size={18} />
               </button>
             </div>
-            <div className="space-y-3">
-              <div className="text-gray-300">
-                <p className="flex items-center gap-2">
-                  <code className="bg-gray-800 px-2 py-1 rounded">**text**</code>
-                  <span>→</span>
-                  <strong>bold</strong>
-                  <span className="text-gray-400">(Ctrl+B)</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <code className="bg-gray-800 px-2 py-1 rounded">*text*</code>
-                  <span>→</span>
-                  <em>italic</em>
-                  <span className="text-gray-400">(Ctrl+I)</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <code className="bg-gray-800 px-2 py-1 rounded">`code`</code>
-                  <span>→</span>
-                  <code>code</code>
-                  <span className="text-gray-400">(Ctrl+E)</span>
-                </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <h4 className="text-blue-400 text-sm font-medium">Commands</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-gray-700 p-2 rounded">
+                    <code className="text-sm text-blue-400">/parallel</code>
+                    <p className="text-xs text-gray-300 mt-1">Process models simultaneously</p>
+                  </div>
+                  <div className="bg-gray-700 p-2 rounded">
+                    <code className="text-sm text-blue-400">/series</code>
+                    <p className="text-xs text-gray-300 mt-1">Process models in sequence</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-blue-400 text-sm font-medium">Text Formatting</h4>
+                <div className="grid gap-2">
+                  <div className="bg-gray-700 p-2 rounded flex items-center justify-between">
+                    <code className="text-sm">**bold**</code>
+                    <span className="text-xs text-gray-400">Double tap * key</span>
+                  </div>
+                  <div className="bg-gray-700 p-2 rounded flex items-center justify-between">
+                    <code className="text-sm">*italic*</code>
+                    <span className="text-xs text-gray-400">Single tap * key</span>
+                  </div>
+                  <div className="bg-gray-700 p-2 rounded flex items-center justify-between">
+                    <code className="text-sm">`code`</code>
+                    <span className="text-xs text-gray-400">Tap ` key</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -715,7 +725,7 @@ const ChatWindow = () => {
       )}
 
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="p-2 sm:p-4 bg-gray-800">
+      <form onSubmit={handleSubmit} className="py-2 sm:py-4 px-6 bg-gray-800">
         <div className="relative flex gap-2 sm:gap-4 items-stretch">
           {/* Command Suggestions Popup */}
           {showCommands && (
@@ -746,10 +756,10 @@ const ChatWindow = () => {
               <button
                 type="button"
                 onClick={() => setShowFormattingHelp(!showFormattingHelp)}
-                className="absolute left-2 top-2 text-gray-400 hover:text-white transition-colors"
+                className="absolute left-3 top-3 text-gray-400 hover:text-white transition-colors z-10"
                 title="Formatting Help"
               >
-                <FaInfoCircle size={20} />
+                <FaInfoCircle size={18} />
               </button>
             )}
             
@@ -760,9 +770,14 @@ const ChatWindow = () => {
               placeholder="Type '/' for commands..."
               className={`w-full rounded-lg bg-gray-700 text-white placeholder-gray-400 
                        border border-gray-600 focus:outline-none focus:border-blue-500
-                       resize-none min-h-[40px] sm:min-h-[44px] max-h-32 text-sm sm:text-base 
+                       resize-none min-h-[44px] max-h-32 
+                       text-[15px] leading-[1.4]
                        font-mono whitespace-pre-wrap
-                       ${isSmallScreen ? 'pl-10' : 'pl-3'} pr-3 py-2`}
+                       ${isSmallScreen ? 'pl-10' : 'pl-3'} pr-3 py-2.5`}
+              style={{
+                fontSize: isSmallScreen ? '15px' : '16px',
+                lineHeight: '1.4'
+              }}
               rows={1}
             />
           </div>
