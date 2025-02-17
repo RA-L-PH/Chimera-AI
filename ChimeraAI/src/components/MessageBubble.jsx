@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { FaCopy, FaTrash, FaUser, FaRobot } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
@@ -27,6 +27,13 @@ const MessageBubble = ({
 }) => {
   const [showOptions, setShowOptions] = useState(false);
 
+  // Add MathJax typesetting after render
+  useEffect(() => {
+    if (window.MathJax) {
+      window.MathJax.typesetPromise();
+    }
+  }, [message]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -49,6 +56,16 @@ const MessageBubble = ({
               components={{
                 p: ({ children }) => <p className="m-0 whitespace-pre-wrap break-words">{children}</p>,
                 code: ({ node, inline, className, children, ...props }) => {
+                  const isMath = /math/.test(className || '');
+                  
+                  if (isMath) {
+                    return (
+                      <span className="math">
+                        {inline ? `\\(${children}\\)` : `\\[${children}\\]`}
+                      </span>
+                    );
+                  }
+
                   return (
                     <code
                       className={`${inline ? 'bg-gray-800 px-1 py-0.5 rounded' : 'block bg-gray-800 p-4 rounded-lg'} 
