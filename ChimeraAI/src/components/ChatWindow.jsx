@@ -50,6 +50,7 @@ const ChatWindow = () => {
   const [showCommands, setShowCommands] = useState(false);
   const [selectedCommand, setSelectedCommand] = useState(0);
   const [conversationContext, setConversationContext] = useState([]);
+  const [autoScroll, setAutoScroll] = useState(true);
 
   useEffect(() => {
     const loadChat = async () => {
@@ -90,13 +91,40 @@ const ChatWindow = () => {
     }
   }, [chatId, navigate]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // Modify the scrollToBottom function
+  const scrollToBottom = (force = false) => {
+    if (!messagesEndRef.current) return;
+    
+    // Get the chat container
+    const chatContainer = messagesEndRef.current.parentElement;
+    
+    // Check if user is near bottom (within 100px of bottom)
+    const isNearBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < 100;
+    
+    // Only auto-scroll if forced or if user is near bottom
+    if (force || isNearBottom) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
+  // Update the useEffect for scrolling
   useEffect(() => {
-    scrollToBottom();
+    // Force scroll on initial load
+    if (messages.length <= 1) {
+      scrollToBottom(true);
+      return;
+    }
+    
+    // Normal scroll behavior for new messages
+    scrollToBottom(false);
   }, [messages]);
+
+  // Add scroll monitoring to the messages container
+  const handleScroll = (e) => {
+    const container = e.target;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    setAutoScroll(isNearBottom);
+  };
 
   // Add before handleSubmit
   const processParallel = async (message, chatRef, aiTimestamp) => {
@@ -631,7 +659,10 @@ const ChatWindow = () => {
         </div>
       )}
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div 
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        onScroll={handleScroll}
+      >
         {messages.map((msg) => (
           <MessageBubble
             key={msg.id}
@@ -653,6 +684,29 @@ const ChatWindow = () => {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Add this button just before the input form */}
+      {!autoScroll && messages.length > 0 && (
+        <button
+          onClick={() => scrollToBottom(true)}
+          className="fixed bottom-20 right-8 bg-gray-700 hover:bg-gray-600 
+                     text-white rounded-full p-2 shadow-lg"
+        >
+          <svg 
+            className="w-6 h-6" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M19 14l-7 7m0 0l-7-7m7 7V3" 
+            />
+          </svg>
+        </button>
+      )}
 
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="p-4 bg-gray-800">
