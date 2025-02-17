@@ -6,11 +6,11 @@ import { FaPaperPlane } from 'react-icons/fa';
 import { doc, getDoc, updateDoc, arrayUnion, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase/firebaseConfig';
 import ConstantAPI from '../utils/api'
+import { encryptForStorage, decryptFromStorage } from '../utils/encryption';
 
 // Add these markdown helper functions at the top of your component file
 const markdownShortcuts = {
   '**': {
-    template: '**$1**',
     offset: 2
   },
   '*': {
@@ -66,21 +66,34 @@ const ChatWindow = () => {
 
         if (!chatSnap.exists()) {
           setError('Chat not found');
-          setTimeout(() => {
-            navigate('/dashboard/chat');
-          }, 2000);
+          setTimeout(() => navigate('/dashboard/chat'), 2000);
           return;
         }
 
         const data = chatSnap.data();
-        setChatData(data);
-        setMessages(data.chatHistory || []);
+        
+        // Decrypt chat history if encrypted
+        const decryptedHistory = await Promise.all(
+          (data.chatHistory || []).map(async (msg) => {
+            if (msg.encrypted && msg.iv) {
+              const decryptedMessage = await decryptFromStorage(msg.encrypted, msg.iv);
+              return {
+                ...msg,
+                message: decryptedMessage,
+                encrypted: undefined,
+                iv: undefined
+              };
+            }
+            return msg;
+          })
+        );
+
+        setChatData({ ...data, chatHistory: undefined });
+        setMessages(decryptedHistory);
       } catch (error) {
         console.error('Error loading chat:', error);
         setError('Failed to load chat');
-        setTimeout(() => {
-          navigate('/dashboard/chat');
-        }, 2000);
+        setTimeout(() => navigate('/dashboard/chat'), 2000);
       } finally {
         setIsLoading(false);
       }
@@ -154,12 +167,11 @@ const ChatWindow = () => {
               messageHistory,
               () => {}
             );
-            return {
-              modelId,
-              content: response.choices[0].message.content
-            };
+            if (!response?.choices?.[0]?.message?.content) {
+              return { modelId, error: true };
+            }
+            return { modelId, content: response.choices[0].message.content };
           } catch (error) {
-            console.error(`Error with model ${modelId}:`, error);
             return { modelId, error: true };
           }
         })
@@ -173,11 +185,10 @@ const ChatWindow = () => {
           .join('\n\n---\n\n');
 
         // Synthesize final response using the first model
-        const finalResponse = await ConstantAPI(
+        const synthesizedResponse = await ConstantAPI(
           chatData.modelIds[0],
           `Synthesize these model responses into a coherent response:\n\n${combinedMessage}`,
           (partialResponse) => {
-            // Update the temporary message with streaming response
             setMessages(prev => 
               prev.map(msg => 
                 msg.id === tempAiMessage.id 
@@ -188,10 +199,12 @@ const ChatWindow = () => {
           }
         );
 
-        // Update final message
+        const finalResponse = synthesizedResponse.choices[0].message.content;
+        const { encrypted, iv } = await encryptForStorage(finalResponse);
+
         const finalAiMessage = {
           ...tempAiMessage,
-          message: finalResponse.choices[0].message.content,
+          message: finalResponse,
           isStreaming: false
         };
 
@@ -202,23 +215,31 @@ const ChatWindow = () => {
           )
         );
 
-        // Update Firestore
+        const firestoreMessage = {
+          id: tempAiMessage.id,
+          encrypted,
+          iv,
+          timestamp: aiTimestamp,
+          isUser: false,
+          modelId: chatData.modelIds[0],
+          isStreaming: false
+        };
+
+        // Store encrypted message in Firestore
         await updateDoc(chatRef, {
-          chatHistory: arrayUnion({
-            ...finalAiMessage,
-            timestamp: aiTimestamp
-          }),
+          chatHistory: arrayUnion(firestoreMessage),
           updatedAt: serverTimestamp()
         });
 
-        return finalResponse.choices[0].message.content;
+        return finalResponse;
       }
 
       throw new Error('All parallel requests failed');
     } catch (error) {
       // Remove temporary message on error
       setMessages(prev => prev.filter(msg => msg.id !== tempAiMessage.id));
-      throw error;
+      setError('Failed to process message in parallel mode');
+      throw new Error('Parallel processing failed');
     }
   };
 
@@ -273,7 +294,7 @@ const ChatWindow = () => {
           });
 
           if (!response?.choices?.[0]?.message?.content) {
-            throw new Error(`No response from ${modelName}`);
+            throw new Error(`Model ${modelName} failed to respond`);
           }
 
           // Store intermediate response (not shown to user)
@@ -282,6 +303,24 @@ const ChatWindow = () => {
           // Only update UI and save to Firestore for the final model
           if (isLastModel) {
             const finalResponse = response.choices[0].message.content;
+            const { encrypted, iv } = await encryptForStorage(finalResponse);
+
+            const firestoreMessage = {
+              id: tempAiMessage.id,
+              encrypted,
+              iv,
+              timestamp: aiTimestamp,
+              isUser: false,
+              modelId: modelId,
+              isStreaming: false
+            };
+
+            // Store encrypted message in Firestore
+            await updateDoc(chatRef, {
+              chatHistory: arrayUnion(firestoreMessage),
+              updatedAt: serverTimestamp()
+            });
+
             const finalAiMessage = {
               ...tempAiMessage,
               message: finalResponse,
@@ -308,8 +347,8 @@ const ChatWindow = () => {
             return finalResponse;
           }
         } catch (error) {
-          console.error(`Error with ${modelName}:`, error);
-          throw new Error(`Failed to process with ${modelName}`);
+          setError(`Failed to process with ${modelName}`);
+          throw new Error(`Processing failed with ${modelName}`);
         }
       }
     } catch (error) {
@@ -358,10 +397,8 @@ const ChatWindow = () => {
           return { modelId, response, index };
         } catch (error) {
           if (error.name === 'AbortError') {
-            console.log(`Request for ${modelId} was cancelled`);
             return { modelId, error: 'cancelled', index };
           }
-          console.error(`Error with model ${modelId}:`, error);
           return { modelId, error: true, index };
         }
       });
@@ -381,32 +418,51 @@ const ChatWindow = () => {
       }
 
       const finalResponse = winner.response.choices[0].message.content;
+      
+      // Encrypt response for storage
+      const { encrypted, iv } = await encryptForStorage(finalResponse);
+      
       const finalAiMessage = {
         ...tempAiMessage,
-        message: finalResponse,
+        encrypted,
+        iv,
+        message: finalResponse, // Keep decrypted message for local state
         isStreaming: false,
         modelId: winner.modelId
       };
 
-      // Update UI with final response
+      // Update UI with decrypted message
       setMessages(prev => 
         prev.map(msg => 
-          msg.id === tempAiMessage.id ? finalAiMessage : msg
+          msg.id === tempAiMessage.id ? {
+            ...finalAiMessage,
+            encrypted: undefined,
+            iv: undefined
+          } : msg
         )
       );
 
-      // Save to Firestore
+      // Before storing in Firestore, remove undefined values and ensure all required fields are present
+      const firestoreMessage = {
+        id: finalAiMessage.id,
+        encrypted,
+        iv,
+        timestamp: aiTimestamp,
+        isUser: false,
+        modelId: winner.modelId,
+        isStreaming: false
+      };
+
+      // Store encrypted message in Firestore
       await updateDoc(chatRef, {
-        chatHistory: arrayUnion({
-          ...finalAiMessage,
-          timestamp: aiTimestamp
-        }),
+        chatHistory: arrayUnion(firestoreMessage),
         updatedAt: serverTimestamp()
       });
 
       return finalResponse;
     } catch (error) {
       setMessages(prev => prev.filter(msg => msg.id !== tempAiMessage.id));
+      setError('Failed to process message');
       throw error;
     }
   };
@@ -423,28 +479,49 @@ const ChatWindow = () => {
 
     try {
       const currentTimestamp = Timestamp.now();
-      const aiTimestamp = Timestamp.now(); // Add this line to define aiTimestamp
+      const aiTimestamp = Timestamp.now();
+      
+      // Encrypt message for storage
+      const { encrypted, iv } = await encryptForStorage(inputMessage);
+      
       const newMessage = {
         id: Date.now().toString(),
-        message: inputMessage,
+        encrypted,
+        iv,
         timestamp: currentTimestamp,
         isUser: true,
         userId: user.uid,
         userEmail: user.email
       };
 
-      // Update local state with user message
-      setMessages(prev => [...prev, newMessage]);
+      // Use decrypted message in local state
+      setMessages(prev => [...prev, {
+        ...newMessage,
+        message: inputMessage,
+        encrypted: undefined,
+        iv: undefined
+      }]);
+      
       setInputMessage('');
       setIsTyping(true);
 
-      // Update Firestore with user message
+      // Update the message storage in handleSubmit:
+
+      // Create message object for Firestore (only include required fields)
+      const firestoreMessage = {
+        id: newMessage.id,
+        encrypted,
+        iv,
+        timestamp: currentTimestamp,
+        isUser: true,
+        userId: user.uid,
+        userEmail: user.email
+      };
+
+      // Store encrypted message in Firestore
       const chatRef = doc(db, 'Chimera_AI', user.email, 'Chats', chatId);
       await updateDoc(chatRef, {
-        chatHistory: arrayUnion({
-          ...newMessage,
-          timestamp: currentTimestamp
-        }),
+        chatHistory: arrayUnion(firestoreMessage),
         updatedAt: serverTimestamp()
       });
 
@@ -476,11 +553,9 @@ const ChatWindow = () => {
           content: finalResponse
         }]);
       } catch (error) {
-        console.error('Error processing message:', error);
-        setError(error.message);
+        setError('Failed to process message. Please try again.');
       }
     } catch (error) {
-      console.error('Error sending message:', error);
       setError('Failed to send message. Please try again.');
     } finally {
       setIsTyping(false);

@@ -8,7 +8,6 @@ const ConstantAPI = async (model, message, conversationHistory = [], onChunk, si
       throw new Error('Invalid API key format');
     }
 
-    // Ensure conversationHistory is an array and format it for the API
     const history = Array.isArray(conversationHistory) ? conversationHistory : [];
     const messages = [
       ...history.map(msg => ({
@@ -20,9 +19,6 @@ const ConstantAPI = async (model, message, conversationHistory = [], onChunk, si
         content: message
       }
     ];
-
-    // Log for debugging
-    console.log('Formatted messages:', messages);
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -37,16 +33,14 @@ const ConstantAPI = async (model, message, conversationHistory = [], onChunk, si
         messages,
         stream: !!onChunk
       }),
-      signal // Add abort signal
+      signal
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`API request failed: ${response.status} ${response.statusText}\nDetails: ${errorBody}`);
+      throw new Error(`API request failed: ${response.status}`);
     }
 
     if (onChunk) {
-      // Handle streaming response
       const reader = response.body.getReader();
       let partialResponse = "";
 
@@ -62,30 +56,24 @@ const ConstantAPI = async (model, message, conversationHistory = [], onChunk, si
             const data = line.slice(6);
             if (data === '[DONE]') continue;
 
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices[0]?.delta?.content || '';
-              partialResponse += content;
-              onChunk(partialResponse);
-            } catch (e) {
-              console.error('Chunk parsing error:', e);
-            }
+            const parsed = JSON.parse(data);
+            const content = parsed.choices[0]?.delta?.content || '';
+            partialResponse += content;
+            onChunk(partialResponse);
           }
         }
       }
 
       return { choices: [{ message: { content: partialResponse } }] };
     } else {
-      const data = await response.json();
-      return data;
+      return await response.json();
     }
     
   } catch (error) {
     if (error.name === 'AbortError') {
-      throw error; // Re-throw abort errors
+      throw error;
     }
-    console.error('API call failed:', error);
-    throw error;
+    throw new Error('API request failed');
   }
 };
 

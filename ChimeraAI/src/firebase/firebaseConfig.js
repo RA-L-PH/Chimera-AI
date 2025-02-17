@@ -10,14 +10,23 @@ import {
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+
+const apikey = import.meta.env.VITE_FIREBASE_API_KEY;
+const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
+const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET;
+const messagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID;
+const appId = import.meta.env.VITE_FIREBASE_APP_ID;
+const appName = import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCw3TQbo0kR4uwuQdPJHdMYZ8eSkCvwXTI",
-  authDomain: "chimera-ai.firebaseapp.com",
-  projectId: "chimera-ai",
-  storageBucket: "chimera-ai.firebasestorage.app",
-  messagingSenderId: "885052782781",
-  appId: "1:885052782781:web:6926df1376ed32ec011fd4",
-  measurementId: "G-71T0ENY8M6"
+  apiKey: apikey,
+  authDomain: authDomain,
+  projectId: projectId,
+  storageBucket: storageBucket,
+  messagingSenderId: messagingSenderId,
+  appId: appId,
+  measurementId: appName
 };
 
 // Initialize Firebase

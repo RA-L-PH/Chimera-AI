@@ -41,7 +41,8 @@ const Chat = () => {
 
           setChats(chatsData);
         } catch (error) {
-          console.error('Error loading chats:', error);
+          // Handle error silently or show user-friendly notification
+          setChats([]);
         } finally {
           setIsLoading(false);
         }
@@ -59,8 +60,6 @@ const Chat = () => {
   };
 
   const handleSubmit = (chatData) => {
-    // Handle the new chat data here
-    console.log(chatData);
     setIsFormOpen(false);
   };
 
@@ -78,7 +77,7 @@ const Chat = () => {
         await deleteDoc(chatRef);
         setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
       } catch (error) {
-        console.error('Error deleting chat:', error);
+        // Handle error silently or show user-friendly notification
       }
     }
   };

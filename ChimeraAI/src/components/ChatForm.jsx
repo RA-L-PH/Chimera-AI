@@ -307,8 +307,9 @@ const ChatForm = ({ onSubmit, onCancel }) => {
             setUserTier(userDoc.data().tier || 'free');
           }
         }
-      } catch (error) {
-        console.error('Error fetching user tier:', error);
+      } catch {
+        // Silent fail and default to free tier
+        setUserTier('free');
       } finally {
         setIsLoading(false);
       }
@@ -362,10 +363,9 @@ const ChatForm = ({ onSubmit, onCancel }) => {
 
       await setDoc(chatRef, chatData);
       onSubmit(chatData);
-      navigate(`/dashboard/chat/${chatRef.id}`); // Update navigation path
-    } catch (error) {
-      console.error('Error creating chat:', error);
-      setError('Error creating chat. Please try again.');
+      navigate(`/dashboard/chat/${chatRef.id}`);
+    } catch {
+      setError('Failed to create chat. Please try again.');
     }
   };
 

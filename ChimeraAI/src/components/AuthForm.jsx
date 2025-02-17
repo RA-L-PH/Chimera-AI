@@ -49,12 +49,9 @@ const createUserDocument = async (user, additionalData = {}) => {
   try {
     const collectionName = encodeURIComponent('Chimera_AI');
     const userRef = doc(db, collectionName, user.email);
-
-    // First, check if the document already exists
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
-      // New user - set initial data including 'free' tier
       const displayName = user.displayName || additionalData.name || user.email.split('@')[0];
       const userData = {
         uid: user.uid,
@@ -73,7 +70,6 @@ const createUserDocument = async (user, additionalData = {}) => {
       };
       await setDoc(userRef, userData);
     } else {
-      // Existing user - only update lastLogin
       await updateDoc(userRef, {
         lastLogin: serverTimestamp()
       });
@@ -81,7 +77,6 @@ const createUserDocument = async (user, additionalData = {}) => {
 
     return userRef;
   } catch (error) {
-    console.error('Error creating/updating user document:', error);
     throw new Error('Failed to create/update user profile. Please try again.');
   }
 };
@@ -139,9 +134,8 @@ const AuthForm = () => {
       } else {
         setErrors({ submit: result.error });
       }
-    } catch (error) {
+    } catch {
       setErrors({ submit: 'Authentication failed. Please try again.' });
-      console.error('Auth error:', error);
     } finally {
       setIsLoading(false);
     }

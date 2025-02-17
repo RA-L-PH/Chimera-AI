@@ -41,7 +41,6 @@ const Home = () => {
   };
 
   const handleSubmit = (chatData) => {
-    console.log(chatData);
     setIsFormOpen(false);
     navigate('/dashboard/chat');
   };

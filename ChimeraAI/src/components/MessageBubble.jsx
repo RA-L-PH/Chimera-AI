@@ -8,11 +8,9 @@ const formatTimestamp = (timestamp) => {
   if (!timestamp) return '';
 
   try {
-    // Handle Firestore Timestamp
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return format(date, 'MMM d, yyyy h:mm a');
-  } catch (error) {
-    console.error('Error formatting timestamp:', error);
+  } catch {
     return '';
   }
 };

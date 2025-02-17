@@ -11,7 +11,7 @@ import {
   deleteDoc 
 } from 'firebase/firestore';
 
-const API_KEY = 'a4c4cc4d92317af44c81a1b1fa64254e';
+const API_KEY = import.meta.env.VITE_API_KEY;
 const TECH_KEYWORDS = 'technology OR artificial intelligence OR cybersecurity OR programming';
 const GNEWS_URL = `https://gnews.io/api/v4/search?q=${encodeURIComponent(TECH_KEYWORDS)}&lang=en&country=us&max=4&apikey=${API_KEY}&sortby=publishedAt&category=technology`;
 const UPDATE_HOURS = [0, 6, 12, 18];

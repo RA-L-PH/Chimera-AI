@@ -9,25 +9,19 @@ export const getApiKey = async () => {
     if (docSnap.exists()) {
       const data = docSnap.data();
       if (!data.openrouterapi) {
-        throw new Error('OpenRouter API key not found in environment configuration');
-      }
-      // Fixed validation condition
-      if (typeof data.openrouterapi !== 'string' || data.openrouterapi.trim() === '') {
-        throw new Error('Invalid OpenRouter API key format');
+        throw new Error('API key not found');
       }
       
-      // Add length validation for OpenRouter API keys
       const apiKey = data.openrouterapi.trim();
-      if (apiKey.length < 32) { // OpenRouter API keys are typically longer
-        throw new Error('OpenRouter API key appears too short');
+      if (typeof apiKey !== 'string' || apiKey.length < 32) {
+        throw new Error('Invalid API key');
       }
       
       return apiKey;
     } else {
-      throw new Error('Environment configuration not found in Firestore');
+      throw new Error('Configuration not found');
     }
   } catch (error) {
-    console.error('Error fetching OpenRouter API key:', error);
-    throw error;
+    throw new Error('Failed to retrieve API key');
   }
 };
