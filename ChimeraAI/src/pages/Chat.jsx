@@ -3,21 +3,34 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, getDocs, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../firebase/firebaseConfig';
+import { decryptFromStorage } from '../utils/encryption';
 import ChatForm from '../components/ChatForm';
 import { onAuthStateChanged } from 'firebase/auth';
-import { FiTrash2 } from 'react-icons/fi'; // Add this for the trash icon
+import { FiTrash2 } from 'react-icons/fi';
 
-// Add this helper function at the top of your component
-const truncateMessage = (message, wordLimit = 8) => {
+// Helper function for message preview
+const getMessagePreview = async (message, wordLimit = 20) => {
   if (!message) return 'No messages yet';
-  const words = message.split(' ');
-  if (words.length <= wordLimit) return message;
-  return words.slice(0, wordLimit).join(' ') + '...';
+  
+  try {
+    let decryptedMessage;
+    if (message.encrypted && message.iv) {
+      decryptedMessage = await decryptFromStorage(message.encrypted, message.iv);
+    } else {
+      decryptedMessage = message.message || 'No message content';
+    }
+    
+    const words = decryptedMessage.split(' ');
+    return words.slice(0, wordLimit).join(' ') + (words.length > wordLimit ? '...' : '');
+  } catch (error) {
+    return 'Encrypted message';
+  }
 };
 
 const Chat = () => {
   const navigate = useNavigate();
   const [chats, setChats] = useState([]);
+  const [messagePreviews, setMessagePreviews] = useState({});
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -39,9 +52,18 @@ const Chat = () => {
             ...doc.data()
           }));
 
+          // Load message previews
+          const previews = {};
+          for (const chat of chatsData) {
+            const lastMessage = chat.chatHistory?.[chat.chatHistory.length - 1];
+            if (lastMessage) {
+              previews[chat.id] = await getMessagePreview(lastMessage);
+            }
+          }
+
           setChats(chatsData);
+          setMessagePreviews(previews);
         } catch (error) {
-          // Handle error silently or show user-friendly notification
           setChats([]);
         } finally {
           setIsLoading(false);
@@ -51,7 +73,6 @@ const Chat = () => {
       loadChats();
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [navigate]);
 
@@ -63,24 +84,30 @@ const Chat = () => {
     setIsFormOpen(false);
   };
 
-  // Update the handleChatClick function:
   const handleChatClick = (chatId) => {
     navigate(`/dashboard/chat/${chatId}`);
   };
 
-  // Add this function to handle chat deletion
   const handleDeleteChat = async (e, chatId, userEmail) => {
-    e.stopPropagation(); // Prevent chat selection when clicking delete
+    e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this chat?')) {
       try {
         const chatRef = doc(db, 'Chimera_AI', userEmail, 'Chats', chatId);
         await deleteDoc(chatRef);
         setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
       } catch (error) {
-        // Handle error silently or show user-friendly notification
+        // Handle error silently
       }
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading chats...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -109,7 +136,7 @@ const Chat = () => {
                 <div>
                   <h3 className="text-lg font-medium text-white">{chat.name}</h3>
                   <p className="text-gray-400 text-sm mt-1">
-                    {truncateMessage(chat.chatHistory?.[chat.chatHistory.length - 1]?.message)}
+                    {messagePreviews[chat.id] || 'Loading preview...'}
                   </p>
                 </div>
                 <div className="flex items-center space-x-4">
