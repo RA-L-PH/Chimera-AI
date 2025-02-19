@@ -1,6 +1,12 @@
+# Chimera AI
+
+<p align="center">
+  <img src="./ChimeraAI/src/assets/ChimeraAI.png" alt="Chimera AI Logo" width="200"/>
+</p>
+
 ## General Information
 
-Chimera AI is a chatbot that combines generative AI models to create a more powerful and versatile conversational experience. With Chimera AI, you can combine different AI models to create a chatbot that is tailored to your specific needs.
+Chimera AI is a chatbot that combines generative AI models like Gemini Pro, DeepSeek, and Llama 3 to create a more powerful and versatile conversational experience. It acts as a unified interface to interact with multiple AI models simultaneously.
 
 ## Table of Contents
 
@@ -9,15 +15,14 @@ Chimera AI is a chatbot that combines generative AI models to create a more powe
 3. [Benefits](#benefits)
 4. [Getting Started](#getting-started)
 5. [Usage](#usage)
-6. [Customization](#customization)
-7. [Applications](#applications)
-8. [Support](#support)
-9. [Contributing](#contributing)
-10. [License](#license)
+6. [Contributing](#contributing)
+7. [How to Use Chimera AI](#how-to-use-chimera-ai)
+8. [Advanced Chat Features](#advanced-chat-features)
+9. [Quick Start Guide](#quick-start-guide)
 
 ## Introduction
 
-Chimera AI is designed to revolutionize the way chatbots are created and utilized. By integrating multiple generative AI models, Chimera AI offers a more robust and flexible solution that can be customized to meet a wide range of needs. Whether you are looking to enhance customer service, boost sales, or streamline marketing efforts, Chimera AI provides the tools necessary to build a chatbot that excels in any application.
+Chimera AI is designed to revolutionize the way chatbots are created and utilized. By integrating multiple generative AI models, Chimera AI offers a more robust and flexible solution that can be customized to meet a wide range of needs. Whether you're looking to enhance productivity, solve complex problems, or streamline workflows, Chimera AI provides the tools necessary to leverage multiple AI models efficiently.
 
 ## Features
 
@@ -35,17 +40,10 @@ Chimera AI is designed to be a versatile tool that can be used across various in
 
 ## Benefits
 
-### Enhanced Capabilities
-
-By combining multiple AI models, Chimera AI chatbots are significantly more powerful and versatile. They can handle complex interactions and provide superior user experiences, making them an excellent choice for businesses looking to improve their customer engagement and satisfaction.
-
-### Personalization
-
-Chimera AI enables you to create chatbots that are specifically tailored to your needs. This personalization ensures that your chatbot can offer interactions that are more relevant and engaging for your users, leading to higher satisfaction and better outcomes.
-
-### Efficiency
-
-With Chimera AI, you can achieve higher efficiency and productivity by automating tasks and processes. Advanced chatbots can handle routine inquiries and tasks, freeing up valuable time and resources for other important activities. This increased efficiency can lead to significant cost savings and improved operational performance.
+- Enhanced problem-solving with multiple perspectives
+- Improved accuracy through model collaboration
+- Faster response times with parallel processing
+- Flexible workflow automation options
 
 ## Getting Started
 
@@ -62,49 +60,57 @@ For detailed instructions, refer to the [Installation Guide](#installation-guide
 
 Once your chatbot is set up, you can start using it to interact with users. Chimera AI provides a user-friendly interface that makes it easy to manage and monitor your chatbot's performance. You can also access analytics and reports to gain insights into user interactions and identify areas for improvement.
 
-## Customization
+## How to Use Chimera AI
 
-Chimera AI offers extensive customization options to ensure that your chatbot meets your specific needs. You can:
+### Multiple AI Models
+- Access to cutting-edge models like Gemini Pro, DeepSeek, and Llama 3
+- Leverage each model's unique strengths
+- Seamless integration between different AI providers
 
-- **Modify the chatbot's responses**: Tailor the responses to align with your brand's voice and tone.
-- **Add new functionalities**: Integrate additional AI models or features to enhance your chatbot's capabilities.
-- **Adjust the chatbot's behavior**: Configure the chatbot to handle different types of interactions and scenarios. There are '/' commands as well.
+### Advanced Commands
+- `/parallel` - Process models simultaneously for diverse perspectives
+- `/series` - Chain models sequentially for complex workflows
+- Real-time command processing and model switching
 
-For more information on customization, refer to the [Customization Guide](#customization-guide).
+### Real-time Processing
+- Stream responses in real-time with intelligent model selection
+- Automatic load balancing between models
+- Low-latency response generation
 
-## Applications
+## Advanced Chat Features
 
-Chimera AI can be used in a variety of applications, including:
+### Specialized Models
+- Code-optimized models for programming tasks
+- Math-focused models for calculations and analysis
+- General language models for versatile conversations
 
-- **Customer Service**: Provide instant support and assistance to customers, improving satisfaction and reducing response times.
-- **Sales**: Engage with potential customers, answer their questions, and guide them through the sales process.
-- **Marketing**: Promote products and services, gather customer feedback, and run marketing campaigns.
-- **Human Resources**: Assist with recruitment, onboarding, and employee support.
-- **Healthcare**: Offer medical information, schedule appointments, and provide patient support.
+### Multi-Model Chat
+- Create collaborative sessions with multiple AI models
+- Dynamic model switching based on context
+- Parallel processing for complex queries
 
-The versatility of Chimera AI makes it suitable for a wide range of industries and use cases.
+### Custom Interactions
+- Configure model behavior and priorities
+- Customize response formats and styles
+- Set up model-specific parameters
 
-## Support
+## Quick Start Guide
 
-If you need assistance with Chimera AI, there are several resources available:
-
-- **Documentation**: Comprehensive documentation is available to help you understand and use Chimera AI effectively.
-- **Community Forum**: Join the community forum to ask questions, share experiences, and get support from other users.
-- **Customer Support**: Contact the customer support team for personalized assistance with any issues or inquiries.
+1. Sign up or log in to access the dashboard
+2. Create a new chat and select your preferred AI models
+3. Use commands like `/parallel` or `/series` to control how models work together
+4. Start chatting and experience the power of multiple AI models
 
 ## Contributing
 
-We welcome contributions to Chimera AI! If you would like to contribute, please follow these steps:
-
-1. **Fork the repository**: Create a fork of the Chimera AI repository on GitHub.
-2. **Create a branch**: Create a new branch for your changes.
-3. **Make your changes**: Implement your changes and test them thoroughly.
-4. **Submit a pull request**: Submit a pull request with a detailed description of your changes.
-
-For more information, refer to the [Contributing Guide](#contributing-guide).
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ## License
 
-Chimera AI is licensed under the [MIT License](LICENSE). You are free to use, modify, and distribute the software in accordance with the terms of the license.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Thank you for choosing Chimera AI! We hope you find it to be a valuable tool for creating powerful and versatile chatbots.
+---
+
+<p align="center">
+  Made with ❤️ by the Chimera AI Team
+</p>
