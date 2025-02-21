@@ -43,3 +43,9 @@
   border-radius: 3px;
   font-size: 0.9em;
 }
+
+
+@keyframes fade {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}

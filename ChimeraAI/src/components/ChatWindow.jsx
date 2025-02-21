@@ -8,6 +8,43 @@ import { db, auth } from '../firebase/firebaseConfig';
 import ConstantAPI from '../utils/api'
 import { encryptForStorage, decryptFromStorage } from '../utils/encryption';
 
+// Add after existing imports
+const API_CONSTANTS = {
+  MAX_RETRIES: 3,
+  INITIAL_BACKOFF_MS: 1000,
+  MAX_BACKOFF_MS: 10000
+};
+
+// Add after API_CONSTANTS
+
+const retryWithBackoff = async (operation, modelId) => {
+  let attempts = 0;
+  let backoffTime = API_CONSTANTS.INITIAL_BACKOFF_MS;
+
+  while (attempts < API_CONSTANTS.MAX_RETRIES) {
+    try {
+      const result = await operation();
+      if (result?.choices?.[0]?.message?.content) {
+        return result;
+      }
+      throw new Error('Invalid response format');
+    } catch (error) {
+      attempts++;
+      if (attempts === API_CONSTANTS.MAX_RETRIES) {
+        throw new Error(`${modelId} failed after ${API_CONSTANTS.MAX_RETRIES} attempts: ${error.message}`);
+      }
+      
+      // Calculate exponential backoff with jitter
+      backoffTime = Math.min(
+        backoffTime * 2 * (1 + Math.random() * 0.1),
+        API_CONSTANTS.MAX_BACKOFF_MS
+      );
+      
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
+    }
+  }
+};
+
 // Add these markdown helper functions at the top of your component file
 const markdownShortcuts = {
   '**': {
@@ -51,6 +88,8 @@ const ChatWindow = () => {
   const [selectedCommand, setSelectedCommand] = useState(0);
   const [conversationContext, setConversationContext] = useState([]);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [loadingState, setLoadingState] = useState('');
+  const [loadingStartTime, setLoadingStartTime] = useState(null);
 
   useEffect(() => {
     const loadChat = async () => {
@@ -141,52 +180,67 @@ const ChatWindow = () => {
 
   // Add before handleSubmit
   const processParallel = async (message, chatRef, aiTimestamp) => {
+    const MAX_RETRIES = 4;
     const isFirstMessage = messages.length === 0;
-
+  
     const tempAiMessage = {
       id: Date.now().toString(),
       message: '',
       timestamp: aiTimestamp,
       isUser: false,
-      modelId: chatData.modelIds[0], // Use first model as the synthesizer
+      modelId: chatData.modelIds[0],
       isStreaming: true
     };
-
+  
     setMessages(prev => [...prev, tempAiMessage]);
-
+    setLoadingStartTime(Date.now());
+    setLoadingState(chatData.modelIds.map(id => id.split('/').pop()).join(', '));
+  
     try {
       const responses = await Promise.all(
         chatData.modelIds.map(async (modelId) => {
           try {
-            // Convert messages to array if needed
             const messageHistory = isFirstMessage ? [] : Array.from(messages);
-
-            const response = await ConstantAPI(
-              modelId, 
-              message,
-              messageHistory,
-              () => {}
+            const response = await retryWithBackoff(
+              () => ConstantAPI(
+                modelId, 
+                message,
+                messageHistory,
+                () => {}
+              ),
+              modelId
             );
-            if (!response?.choices?.[0]?.message?.content) {
-              return { modelId, error: true };
-            }
-            return { modelId, content: response.choices[0].message.content };
+            
+            return { 
+              modelId, 
+              content: response.choices[0].message.content 
+            };
           } catch (error) {
+            // Add error message to chat
+            const errorMessage = {
+              id: `error-${Date.now()}-${modelId}`,
+              message: `${modelId.split('/').pop()}: ${error.message}`,
+              timestamp: Timestamp.now(),
+              isUser: false,
+              isError: true,
+              modelId: modelId
+            };
+            setMessages(prev => [...prev, errorMessage]);
             return { modelId, error: true };
           }
         })
       );
-
-      // Combine valid responses
+  
+      // Filter out failed responses and proceed with valid ones
       const validResponses = responses.filter(r => !r.error);
       if (validResponses.length > 0) {
         const combinedMessage = validResponses
           .map(r => `${r.modelId.split('/').pop()}:\n${r.content}`)
           .join('\n\n---\n\n');
-
-        // Synthesize final response using the first model
+  
+        // Synthesize final response using the first available model
         const synthesizedResponse = await ConstantAPI(
-          chatData.modelIds[0],
+          validResponses[0].modelId, // Use first successful model instead of chatData.modelIds[0]
           `Synthesize these model responses into a coherent response:\n\n${combinedMessage}`,
           (partialResponse) => {
             setMessages(prev => 
@@ -198,47 +252,50 @@ const ChatWindow = () => {
             );
           }
         );
-
+  
         const finalResponse = synthesizedResponse.choices[0].message.content;
         const { encrypted, iv } = await encryptForStorage(finalResponse);
-
+  
         const finalAiMessage = {
           ...tempAiMessage,
           message: finalResponse,
           isStreaming: false
         };
-
+  
         // Update local state
         setMessages(prev => 
           prev.map(msg => 
             msg.id === tempAiMessage.id ? finalAiMessage : msg
           )
         );
-
+  
         const firestoreMessage = {
           id: tempAiMessage.id,
           encrypted,
           iv,
           timestamp: aiTimestamp,
           isUser: false,
-          modelId: chatData.modelIds[0],
+          modelId: validResponses[0].modelId,
           isStreaming: false
         };
-
+  
         // Store encrypted message in Firestore
         await updateDoc(chatRef, {
           chatHistory: arrayUnion(firestoreMessage),
           updatedAt: serverTimestamp()
         });
-
+  
+        setLoadingStartTime(null);
+        setLoadingState('');
         return finalResponse;
       }
-
+  
       throw new Error('All parallel requests failed');
     } catch (error) {
-      // Remove temporary message on error
       setMessages(prev => prev.filter(msg => msg.id !== tempAiMessage.id));
       setError('Failed to process message in parallel mode');
+      setLoadingStartTime(null);
+      setLoadingState('');
       throw new Error('Parallel processing failed');
     }
   };
@@ -246,113 +303,123 @@ const ChatWindow = () => {
   // Add this function before handleSubmit
   const processSeries = async (message, chatRef, aiTimestamp) => {
     const isFirstMessage = messages.length === 0;
-
+    const failedModels = [];
+    const modelSequence = [...chatData.modelIds]; // Use default sequence only
+  
     const tempAiMessage = {
       id: Date.now().toString(),
       message: '',
       timestamp: aiTimestamp,
       isUser: false,
-      modelId: chatData.modelIds[0],
+      modelId: modelSequence[0],
       isStreaming: true
     };
-
+  
     setMessages(prev => [...prev, tempAiMessage]);
-
+    setLoadingStartTime(Date.now());
+  
     try {
+      let currentContext = message;
       let responses = {
-        input: message
+        input: message,
+        intermediateSteps: []
       };
-
-      for (let i = 0; i < chatData.modelIds.length; i++) {
-        const modelId = chatData.modelIds[i];
+  
+      // Process each model in sequence
+      for (let i = 0; i < modelSequence.length; i++) {
+        const modelId = modelSequence[i];
         const modelName = modelId.split('/').pop().replace(':free', '');
-        const isFirstModel = i === 0;
-        const isLastModel = i === chatData.modelIds.length - 1;
-
-        // Prepare input for current model
-        const currentInput = isFirstModel 
-          ? responses.input 
-          : `Enhance.\n\nPrevious response:\n${responses[`model${i-1}Response`]}`;
-
+        const isLastModel = i === modelSequence.length - 1;
+  
+        setLoadingState(`${modelName} (${i + 1}/${modelSequence.length})`);
+  
+        // Use default instruction
+        const instruction = `Enhance the previous response. If this is the first response, process the input directly.`;
+  
+        // Construct prompt with context
+        const prompt = i === 0 
+          ? `${instruction}\n\nInput: ${currentContext}`
+          : `${instruction}\n\nPrevious response:\n${currentContext}\n\nOriginal input: ${message}`;
+  
         try {
-          // Process with current model (only show streaming for final model)
-          const response = await ConstantAPI(modelId, currentInput, isFirstMessage ? [] : messages, (partialResponse) => {
-            if (isLastModel) {
-              // Only update UI for the last model's response
-              setMessages(prev => 
-                prev.map(msg => 
-                  msg.id === tempAiMessage.id 
-                    ? { 
-                        ...msg, 
-                        message: partialResponse,
-                        modelId: modelId
-                      }
-                    : msg
-                )
-              );
-            }
+          const response = await retryWithBackoff(
+            () => ConstantAPI(
+              modelId, 
+              prompt,
+              isFirstMessage ? [] : messages,
+              (partialResponse) => {
+                if (isLastModel) {
+                  setMessages(prev => 
+                    prev.map(msg => 
+                      msg.id === tempAiMessage.id 
+                        ? { ...msg, message: partialResponse, modelId }
+                        : msg
+                    )
+                  );
+                }
+              }
+            ),
+            modelId
+          );
+  
+          const modelResponse = response.choices[0].message.content;
+          responses.intermediateSteps.push({
+            modelId,
+            response: modelResponse
           });
-
-          if (!response?.choices?.[0]?.message?.content) {
-            throw new Error(`Model ${modelName} failed to respond`);
-          }
-
-          // Store intermediate response (not shown to user)
-          responses[`model${i}Response`] = response.choices[0].message.content;
-
-          // Only update UI and save to Firestore for the final model
-          if (isLastModel) {
-            const finalResponse = response.choices[0].message.content;
-            const { encrypted, iv } = await encryptForStorage(finalResponse);
-
-            const firestoreMessage = {
-              id: tempAiMessage.id,
-              encrypted,
-              iv,
-              timestamp: aiTimestamp,
-              isUser: false,
-              modelId: modelId,
-              isStreaming: false
-            };
-
-            // Store encrypted message in Firestore
-            await updateDoc(chatRef, {
-              chatHistory: arrayUnion(firestoreMessage),
-              updatedAt: serverTimestamp()
-            });
-
-            const finalAiMessage = {
-              ...tempAiMessage,
-              message: finalResponse,
-              isStreaming: false,
-              modelId: modelId
-            };
-
-            // Update UI with final response
-            setMessages(prev => 
-              prev.map(msg => 
-                msg.id === tempAiMessage.id ? finalAiMessage : msg
-              )
-            );
-
-            // Save final response to Firestore
-            await updateDoc(chatRef, {
-              chatHistory: arrayUnion({
-                ...finalAiMessage,
-                timestamp: aiTimestamp
-              }),
-              updatedAt: serverTimestamp()
-            });
-
-            return finalResponse;
-          }
+          
+          currentContext = modelResponse;
         } catch (error) {
-          setError(`Failed to process with ${modelName}`);
-          throw new Error(`Processing failed with ${modelName}`);
+          failedModels.push({ modelId, index: i, error: error.message });
+          continue;
         }
       }
+  
+      // Handle case where no models succeeded
+      if (responses.intermediateSteps.length === 0) {
+        throw new Error('No models were able to generate a response');
+      }
+  
+      // Rest of the code remains the same
+      const finalResponse = responses.intermediateSteps[responses.intermediateSteps.length - 1].response;
+      const { encrypted, iv } = await encryptForStorage(finalResponse);
+  
+      const finalAiMessage = {
+        ...tempAiMessage,
+        message: finalResponse,
+        modelId: modelSequence[modelSequence.length - 1],
+        isStreaming: false,
+        steps: responses.intermediateSteps
+      };
+  
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === tempAiMessage.id ? finalAiMessage : msg
+        )
+      );
+  
+      const firestoreMessage = {
+        id: tempAiMessage.id,
+        encrypted,
+        iv,
+        timestamp: aiTimestamp,
+        isUser: false,
+        modelId: modelSequence[modelSequence.length - 1],
+        isStreaming: false
+      };
+  
+      await updateDoc(chatRef, {
+        chatHistory: arrayUnion(firestoreMessage),
+        updatedAt: serverTimestamp()
+      });
+  
+      setLoadingStartTime(null);
+      setLoadingState('');
+      return finalResponse;
     } catch (error) {
       setMessages(prev => prev.filter(msg => msg.id !== tempAiMessage.id));
+      setLoadingStartTime(null);
+      setLoadingState('');
       throw error;
     }
   };
@@ -371,6 +438,8 @@ const ChatWindow = () => {
     };
 
     setMessages(prev => [...prev, tempAiMessage]);
+    setLoadingStartTime(Date.now());
+    setLoadingState('Waiting for first response...');
 
     try {
       // Create an AbortController for each model
@@ -459,10 +528,14 @@ const ChatWindow = () => {
         updatedAt: serverTimestamp()
       });
 
+      setLoadingStartTime(null);
+      setLoadingState('');
       return finalResponse;
     } catch (error) {
       setMessages(prev => prev.filter(msg => msg.id !== tempAiMessage.id));
       setError('Failed to process message');
+      setLoadingStartTime(null);
+      setLoadingState('');
       throw error;
     }
   };
@@ -751,10 +824,21 @@ const ChatWindow = () => {
           />
         ))}
         {isTyping && (
-          <div className="flex gap-2 items-center text-gray-400">
-            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+          <div className="flex flex-col gap-2 items-start text-gray-400">
+            <div className="flex gap-2 items-center">
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-[fade_1.5s_ease-in-out_infinite]" />
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-[fade_1.5s_ease-in-out_infinite_0.5s]" />
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-[fade_1.5s_ease-in-out_infinite_1s]" />
+            </div>
+            {loadingStartTime && Date.now() - loadingStartTime > 6000 && (
+              <div className="text-sm italic">
+                {chatData.processingMode === 'series' 
+                  ? `Currently processing with ${loadingState}...`
+                  : chatData.processingMode === 'parallel'
+                  ? `Waiting for responses from: ${loadingState}`
+                  : `Processing response...`}
+              </div>
+            )}
           </div>
         )}
         <div ref={messagesEndRef} />

@@ -26,7 +26,6 @@ export const useNews = () => {
     return stored ? new Date(stored) : null;
   });
 
-  // Update internal clock every second
   useEffect(() => {
     const clockInterval = setInterval(() => {
       setInternalTime(new Date());
@@ -40,13 +39,11 @@ export const useNews = () => {
       if (lastAttempt) {
         const timeSinceLastAttempt = internalTime.getTime() - new Date(lastAttempt).getTime();
         if (timeSinceLastAttempt < 60000) {
-          console.log('Too many requests, waiting...');
           return;
         }
       }
       localStorage.setItem('lastNewsAttempt', internalTime.toISOString());
 
-      console.log('Fetching news...', { isScheduledUpdate, time: internalTime.toLocaleString() });
       const newsRef = collection(db, 'News');
 
       const response = await fetch(GNEWS_URL);
@@ -71,11 +68,9 @@ export const useNews = () => {
         id: `article-${index + 1}`
       }));
 
-      // Clear existing articles
       const existingDocs = await getDocs(newsRef);
       await Promise.all(existingDocs.docs.map(doc => deleteDoc(doc.ref)));
 
-      // Store new articles
       await Promise.all(
         formattedArticles.map(article => 
           setDoc(doc(newsRef, article.id), article)
@@ -85,13 +80,7 @@ export const useNews = () => {
       setNews(formattedArticles);
       setLastUpdateTime(internalTime);
       localStorage.setItem('lastNewsUpdate', internalTime.toISOString());
-      console.log('News updated successfully at:', internalTime.toLocaleString());
     } catch (error) {
-      console.error('Error details:', {
-        message: error.message,
-        time: internalTime.toLocaleString(),
-        lastUpdate: lastUpdateTime?.toLocaleString()
-      });
       setError(error.message);
     } finally {
       setLoading(false);
@@ -99,16 +88,10 @@ export const useNews = () => {
   };
 
   useEffect(() => {
-    console.log('useNews hook mounted', {
-      lastUpdateTime: lastUpdateTime?.toLocaleString(),
-      currentTime: internalTime.toLocaleString()
-    });
-    
     const checkAndFetchNews = () => {
       const currentHour = internalTime.getHours();
       const currentMinute = internalTime.getMinutes();
 
-      // Check if current time matches update schedule
       const shouldUpdate = UPDATE_HOURS.includes(currentHour) && currentMinute === 0;
 
       if (shouldUpdate) {
@@ -116,26 +99,18 @@ export const useNews = () => {
           ? internalTime.getTime() - lastUpdateTime.getTime()
           : Infinity;
 
-        // Ensure minimum time between updates
         const minimumUpdateInterval = 5.5 * 60 * 60 * 1000;
         if (timeSinceLastUpdate >= minimumUpdateInterval) {
-          console.log('Scheduled update triggered:', {
-            currentTime: internalTime.toLocaleString(),
-            lastUpdate: lastUpdateTime?.toLocaleString(),
-            timeSinceLastUpdate: Math.round(timeSinceLastUpdate / (60 * 60 * 1000)) + ' hours'
-          });
           fetchAndUpdateNews(true);
         }
       }
     };
 
-    // Initial fetch
     const initialFetch = async () => {
       const newsRef = collection(db, 'News');
       const snapshot = await getDocs(query(newsRef, orderBy('timestamp', 'desc'), limit(4)));
       
       if (snapshot.empty || !lastUpdateTime) {
-        console.log('Performing initial fetch...');
         await fetchAndUpdateNews(false);
       } else {
         const newsData = snapshot.docs.map(doc => doc.data());
@@ -146,7 +121,6 @@ export const useNews = () => {
 
     initialFetch();
 
-    // Check every minute
     const updateInterval = setInterval(checkAndFetchNews, 60 * 1000);
     return () => clearInterval(updateInterval);
   }, [lastUpdateTime, internalTime]);

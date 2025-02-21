@@ -12,7 +12,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Chat error:', error, errorInfo);
+    // Silently capture error - could be extended to log to a service
   }
 
   render() {
@@ -36,6 +36,7 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
 ErrorBoundary.propTypes = {
   children: PropTypes.node
 };
