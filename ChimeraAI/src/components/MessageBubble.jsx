@@ -200,10 +200,7 @@ const MessageBubble = ({
 
                       if (inline) {
                         return (
-                          <code
-                            className="bg-gray-800 px-1.5 py-0.5 rounded-md font-mono text-sm"
-                            {...props}
-                          >
+                          <code className="inline-code" {...props}>
                             {children}
                           </code>
                         );
@@ -214,55 +211,60 @@ const MessageBubble = ({
                       const isExpanded = expandedCodeBlock[codeId] !== false;
 
                       return (
-                        <div className="relative my-3 rounded-lg overflow-hidden border border-gray-600 group">
-                          <div className="flex justify-between items-center bg-gray-800 px-4 py-1.5 text-sm">
+                        <div className="code-block-container">
+                          <div className="code-block-header">
                             <div className="font-semibold text-gray-300 flex items-center">
-                              <FaCode className="mr-2" /> {language}
+                              <FaCode className="mr-2" /> 
+                              <span className="text-sm">{language}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => onCopy(String(children).replace(/\n$/, ''))}
-                                className="text-gray-400 hover:text-white transition-colors p-1"
+                                className="text-gray-400 hover:text-white transition-colors p-1.5 rounded hover:bg-gray-700"
                                 title="Copy code"
                               >
-                                <FaCopy size={12} />
+                                <FaCopy size={14} />
                               </button>
                               <button
                                 onClick={() => toggleCodeBlock(codeId)}
-                                className="text-gray-400 hover:text-white transition-colors p-1"
+                                className="text-gray-400 hover:text-white transition-colors p-1.5 rounded hover:bg-gray-700"
                                 title={isExpanded ? "Collapse" : "Expand"}
                               >
-                                {isExpanded ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
+                                {isExpanded ? <FaChevronUp size={14} /> : <FaChevronDown size={14} />}
                               </button>
                             </div>
                           </div>
                           <div 
-                            className={`transition-all duration-300 ease-in-out ${!isExpanded ? 'max-h-52 overflow-y-auto' : ''}`}
+                            className={`code-block-content transition-all duration-300 ease-in-out 
+                              ${!isExpanded ? 'max-h-52' : ''}`}
                           >
                             <SyntaxHighlighter
                               language={language}
                               style={vscDarkPlus}
                               customStyle={{
                                 margin: 0,
-                                borderRadius: 0,
                                 padding: '1rem',
                                 fontSize: '0.9rem',
-                                backgroundColor: '#1e1e1e',
+                                background: '#1e1e1e',
+                                display: 'block',
+                                width: '100%'
                               }}
                             >
                               {String(children).replace(/\n$/, '')}
                             </SyntaxHighlighter>
+                            {!isExpanded && (
+                              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#1e1e1e] to-transparent 
+                                flex items-end justify-center pb-2">
+                                <button
+                                  onClick={() => toggleCodeBlock(codeId)}
+                                  className="text-xs text-blue-300 hover:text-blue-200 transition-colors 
+                                    bg-gray-800 px-3 py-1 rounded-full"
+                                >
+                                  Show more
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          {!isExpanded && (
-                            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-gray-900 to-transparent flex items-end justify-center pb-2">
-                              <button
-                                onClick={() => toggleCodeBlock(codeId)}
-                                className="text-xs text-blue-300 hover:text-blue-200 transition-colors bg-gray-800 px-3 py-1 rounded-full"
-                              >
-                                Show more
-                              </button>
-                            </div>
-                          )}
                         </div>
                       );
                     },
