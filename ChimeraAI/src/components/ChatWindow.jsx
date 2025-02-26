@@ -817,7 +817,12 @@ const ChatWindow = () => {
       {/* Chat Header */}
       <div className="bg-gray-800 p-4 shadow-md">
         <div className="flex justify-between items-center mb-2">
-          <h1 className="text-xl font-semibold text-white">{chatData.name}</h1>
+          <h1 className="text-xl font-semibold text-white">
+            {chatData.name}
+            <span className="ml-2 text-sm text-gray-400">
+              ({messages.length} messages)
+            </span>
+          </h1>
           <div className="flex items-center gap-4 text-sm text-gray-300 bg-gray-700 px-4 py-2 rounded-lg">
             <span className="text-blue-400">Commands:</span>
             <span>/parallel,</span>
@@ -862,23 +867,28 @@ const ChatWindow = () => {
             isStreaming={msg.isStreaming}
             onCopy={() => navigator.clipboard.writeText(msg.message)}
             onDelete={() => setMessages(messages.filter(m => m.id !== msg.id))}
-            photoURL={msg.isUser ? userPhotoURL : null}  // Change photoUrl to photoURL to match property name
+            photoURL={msg.isUser ? userPhotoURL : null}  // This is already correct
           />
         ))}
         {isTyping && (
-          <div className="flex flex-col gap-2 items-start text-gray-400">
+          <div className="flex flex-col gap-2 items-start p-3 bg-gray-800/50 rounded-lg">
             <div className="flex gap-2 items-center">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-[fade_1.5s_ease-in-out_infinite]" />
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-[fade_1.5s_ease-in-out_infinite_0.5s]" />
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-[fade_1.5s_ease-in-out_infinite_1s]" />
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-[fade_1.5s_ease-in-out_infinite]" />
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-[fade_1.5s_ease-in-out_infinite_0.5s]" />
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-[fade_1.5s_ease-in-out_infinite_1s]" />
             </div>
-            {loadingStartTime && Date.now() - loadingStartTime > 6000 && (
-              <div className="text-sm italic">
+            {loadingStartTime && (
+              <div className="text-sm text-gray-300">
                 {chatData.processingMode === 'series' 
                   ? `Currently processing with ${loadingState}...`
                   : chatData.processingMode === 'parallel'
-                  ? `Waiting for responses from: ${loadingState}`
-                  : `Processing response...`}
+                  ? `Combining responses from: ${loadingState}`
+                  : `${Date.now() - loadingStartTime > 6000 
+                      ? 'Still thinking... ' 
+                      : 'Processing with '} ${chatData.modelIds[0].split('/').pop().replace(':free', '')}`}
+                <span className="ml-2 text-xs text-gray-400">
+                  {Math.floor((Date.now() - loadingStartTime) / 1000)}s
+                </span>
               </div>
             )}
           </div>
@@ -890,11 +900,13 @@ const ChatWindow = () => {
       {!autoScroll && messages.length > 0 && (
         <button
           onClick={() => scrollToBottom(true)}
-          className="fixed bottom-20 right-8 bg-gray-700 hover:bg-gray-600 
-                     text-white rounded-full p-2 shadow-lg"
+          className="fixed bottom-20 right-8 bg-blue-600 hover:bg-blue-700 
+                     text-white rounded-full p-3 shadow-lg transition-all duration-200 
+                     flex items-center justify-center"
+          aria-label="Scroll to bottom"
         >
           <svg 
-            className="w-6 h-6" 
+            className="w-5 h-5" 
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24"
@@ -906,6 +918,7 @@ const ChatWindow = () => {
               d="M19 14l-7 7m0 0l-7-7m7 7V3" 
             />
           </svg>
+          <span className="sr-only">Scroll to bottom</span>
         </button>
       )}
 
