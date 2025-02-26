@@ -9,5 +9,10 @@ export default defineConfig({
     tailwindcss()],
   server: {
     port: 5007,
+  },
+  build: {
+    rollupOptions: {
+      external: ['@rollup/rollup-linux-x64-gnu']
+    }
   }
 })
