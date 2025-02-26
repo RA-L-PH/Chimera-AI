@@ -90,6 +90,47 @@ const ChatWindow = () => {
   const [autoScroll, setAutoScroll] = useState(true);
   const [loadingState, setLoadingState] = useState('');
   const [loadingStartTime, setLoadingStartTime] = useState(null);
+  const [userPhotoURL, setUserPhotoURL] = useState(null);
+  
+  // Modify the useEffect that loads user data to also check Firestore for photoURL
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        // First try to get photoURL from auth
+        if (user?.photoURL) {
+          setUserPhotoURL(user.photoURL);
+        } else {
+          // If not available in auth, try to get from Firestore
+          try {
+            const userDocRef = doc(db, 'Chimera_AI', user.email);
+            const userDoc = await getDoc(userDocRef);
+            
+            if (userDoc.exists() && userDoc.data().photoURL) {
+              setUserPhotoURL(userDoc.data().photoURL);
+            }
+          } catch (error) {
+            console.error("Error fetching user photo:", error);
+          }
+        }
+      } else {
+        setUserPhotoURL(null);
+      }
+    };
+    
+    getCurrentUser();
+    
+    // Listen for auth state changes
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        getCurrentUser(); // Re-fetch the data when auth state changes
+      } else {
+        setUserPhotoURL(null);
+      }
+    });
+    
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const loadChat = async () => {
@@ -821,6 +862,7 @@ const ChatWindow = () => {
             isStreaming={msg.isStreaming}
             onCopy={() => navigator.clipboard.writeText(msg.message)}
             onDelete={() => setMessages(messages.filter(m => m.id !== msg.id))}
+            photoURL={msg.isUser ? userPhotoURL : null}  // Change photoUrl to photoURL to match property name
           />
         ))}
         {isTyping && (

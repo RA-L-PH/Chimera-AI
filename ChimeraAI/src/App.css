@@ -44,8 +44,49 @@
   font-size: 0.9em;
 }
 
+/* Message Bubble Enhancements */
+.message-content {
+  line-height: 1.6;
+}
 
+.message-content img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 0.5rem 0;
+}
+
+.shadow-blue {
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.2);
+}
+
+.shadow-gray {
+  box-shadow: 0 4px 14px rgba(55, 65, 81, 0.2);
+}
+
+.shadow-glow {
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+/* Animation for typing indicator */
 @keyframes fade {
   0%, 100% { opacity: 0.3; }
   50% { opacity: 1; }
+}
+
+.animate-pulse {
+  animation: fade 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Enhanced code block styles */
+.prose .syntax-highlighter {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9rem !important;
+}
+
+/* Math equation styling */
+.math {
+  font-size: 1.1em;
+  margin: 0.5em 0;
+  overflow-x: auto;
+  padding: 0.5em 0;
 }
