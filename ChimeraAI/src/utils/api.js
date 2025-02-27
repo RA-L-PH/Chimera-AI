@@ -1,8 +1,7 @@
-import { getApiKey } from './getApiKey';
 
 const ConstantAPI = async (model, message, conversationHistory = [], onChunk, signal) => {
   try {
-    const apiKey = await getApiKey();
+    const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
     
     if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
       throw new Error('Invalid API key format');
