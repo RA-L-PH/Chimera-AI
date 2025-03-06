@@ -195,45 +195,35 @@ const ChatWindow = () => {
   const scrollToBottom = (force = false) => {
     if (!messagesEndRef.current) return;
     
+    // Get the chat container
     const chatContainer = messagesEndRef.current.parentElement;
+    
+    // Check if user is near bottom (within 100px of bottom)
     const isNearBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < 100;
     
+    // Only auto-scroll if forced or if user is near bottom
     if (force || isNearBottom) {
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: force ? "instant" : "smooth",
-        block: "end"
-      });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   };
 
   // Update the useEffect for scrolling
   useEffect(() => {
-    // Initial load - force instant scroll
+    // Force scroll on initial load
     if (messages.length <= 1) {
       scrollToBottom(true);
       return;
     }
     
-    // New message - smooth scroll if auto-scroll is enabled
-    if (autoScroll) {
-      // Small delay to allow content to render
-      requestAnimationFrame(() => {
-        scrollToBottom(false);
-      });
-    }
-  }, [messages, autoScroll]);
+    // Normal scroll behavior for new messages
+    scrollToBottom(false);
+  }, [messages]);
 
   // Add scroll monitoring to the messages container
   const handleScroll = (e) => {
     const container = e.target;
-    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    
-    // Only change autoScroll if we're more than 100px from bottom to prevent flicker
-    if (distanceFromBottom > 100 && autoScroll) {
-      setAutoScroll(false);
-    } else if (distanceFromBottom < 50 && !autoScroll) {
-      setAutoScroll(true);
-    }
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    setAutoScroll(isNearBottom);
   };
 
   // Add before handleSubmit
@@ -984,7 +974,7 @@ const ChatWindow = () => {
       )}
       {/* Messages Container */}
       <div 
-        className="flex-1 overflow-y-auto p-4 space-y-4 messages-container"
+        className="flex-1 overflow-y-auto p-4 space-y-4"
         onScroll={handleScroll}
       >
         {messages.map((msg) => (
