@@ -48,7 +48,9 @@ const retryWithBackoff = async (operation, modelId) => {
 // Add these markdown helper functions at the top of your component file
 const markdownShortcuts = {
   '**': {
-    offset: 2
+    template: '**$1**',
+    offset: 2,
+    type: 'inline'
   },
   '*': {
     template: '*$1*',
@@ -56,11 +58,13 @@ const markdownShortcuts = {
   },
   '```': {
     template: '```\n$1\n```',
-    offset: 4
+    offset: 4,
+    type: 'block'
   },
   '`': {
     template: '`$1`',
-    offset: 1
+    offset: 1,
+    type: 'inline'
   },
   '>': {
     template: '> $1',
@@ -91,6 +95,9 @@ const ChatWindow = () => {
   const [loadingState, setLoadingState] = useState('');
   const [loadingStartTime, setLoadingStartTime] = useState(null);
   const [userPhotoURL, setUserPhotoURL] = useState(null);
+  const [processingStage, setProcessingStage] = useState('');
+  const [processingModels, setProcessingModels] = useState([]);
+  const [applyingMarkdown, setApplyingMarkdown] = useState(false);
   
   // Modify the useEffect that loads user data to also check Firestore for photoURL
   useEffect(() => {
@@ -188,41 +195,55 @@ const ChatWindow = () => {
   const scrollToBottom = (force = false) => {
     if (!messagesEndRef.current) return;
     
-    // Get the chat container
     const chatContainer = messagesEndRef.current.parentElement;
-    
-    // Check if user is near bottom (within 100px of bottom)
     const isNearBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < 100;
     
-    // Only auto-scroll if forced or if user is near bottom
     if (force || isNearBottom) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: force ? "instant" : "smooth",
+        block: "end"
+      });
     }
   };
 
   // Update the useEffect for scrolling
   useEffect(() => {
-    // Force scroll on initial load
+    // Initial load - force instant scroll
     if (messages.length <= 1) {
       scrollToBottom(true);
       return;
     }
     
-    // Normal scroll behavior for new messages
-    scrollToBottom(false);
-  }, [messages]);
+    // New message - smooth scroll if auto-scroll is enabled
+    if (autoScroll) {
+      // Small delay to allow content to render
+      requestAnimationFrame(() => {
+        scrollToBottom(false);
+      });
+    }
+  }, [messages, autoScroll]);
 
   // Add scroll monitoring to the messages container
   const handleScroll = (e) => {
     const container = e.target;
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-    setAutoScroll(isNearBottom);
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    
+    // Only change autoScroll if we're more than 100px from bottom to prevent flicker
+    if (distanceFromBottom > 100 && autoScroll) {
+      setAutoScroll(false);
+    } else if (distanceFromBottom < 50 && !autoScroll) {
+      setAutoScroll(true);
+    }
   };
 
   // Add before handleSubmit
   const processParallel = async (message, chatRef, aiTimestamp) => {
-    const MAX_RETRIES = 4;
+
     const isFirstMessage = messages.length === 0;
+    
+    // Set initial processing stage
+    setProcessingStage('sending');
+    setProcessingModels(chatData.modelIds.map(id => id.split('/').pop().replace(':free', '')));
   
     const tempAiMessage = {
       id: Date.now().toString(),
@@ -238,6 +259,9 @@ const ChatWindow = () => {
     setLoadingState(chatData.modelIds.map(id => id.split('/').pop()).join(', '));
   
     try {
+      // Update stage to generating
+      setProcessingStage('generating');
+      
       const responses = await Promise.all(
         chatData.modelIds.map(async (modelId) => {
           try {
@@ -279,9 +303,16 @@ const ChatWindow = () => {
           .map(r => `${r.modelId.split('/').pop()}:\n${r.content}`)
           .join('\n\n---\n\n');
   
+        // Show markdown processing stage
+        setProcessingStage('markdown');
+        setApplyingMarkdown(true);
+        
+        // Add a small delay to simulate markdown processing
+        await new Promise(resolve => setTimeout(resolve, 500));
+  
         // Synthesize final response using the first available model
         const synthesizedResponse = await ConstantAPI(
-          validResponses[0].modelId, // Use first successful model instead of chatData.modelIds[0]
+          validResponses[0].modelId,
           `Synthesize these model responses into a coherent response:\n\n${combinedMessage}`,
           (partialResponse) => {
             setMessages(prev => 
@@ -294,6 +325,7 @@ const ChatWindow = () => {
           }
         );
   
+        setProcessingStage('finalizing');
         const finalResponse = synthesizedResponse.choices[0].message.content;
         const { encrypted, iv } = await encryptForStorage(finalResponse);
   
@@ -302,6 +334,11 @@ const ChatWindow = () => {
           message: finalResponse,
           isStreaming: false
         };
+  
+        // Reset processing states
+        setApplyingMarkdown(false);
+        setProcessingStage('');
+        setProcessingModels([]);
   
         // Update local state
         setMessages(prev => 
@@ -337,6 +374,10 @@ const ChatWindow = () => {
       setError('Failed to process message in parallel mode');
       setLoadingStartTime(null);
       setLoadingState('');
+      // Reset processing stages
+      setProcessingStage('');
+      setProcessingModels([]);
+      setApplyingMarkdown(false);
       throw new Error('Parallel processing failed');
     }
   };
@@ -346,6 +387,10 @@ const ChatWindow = () => {
     const isFirstMessage = messages.length === 0;
     const failedModels = [];
     const modelSequence = [...chatData.modelIds]; // Use default sequence only
+  
+    // Set initial stage
+    setProcessingStage('sending');
+    setProcessingModels([modelSequence[0].split('/').pop().replace(':free', '')]);
   
     const tempAiMessage = {
       id: Date.now().toString(),
@@ -372,6 +417,9 @@ const ChatWindow = () => {
         const modelName = modelId.split('/').pop().replace(':free', '');
         const isLastModel = i === modelSequence.length - 1;
   
+        // Update processing stage for current model
+        setProcessingStage('generating');
+        setProcessingModels([modelName]);
         setLoadingState(`${modelName} (${i + 1}/${modelSequence.length})`);
   
         // Use default instruction
@@ -421,9 +469,17 @@ const ChatWindow = () => {
         throw new Error('No models were able to generate a response');
       }
   
-      // Rest of the code remains the same
+      // Apply markdown formatting
+      setProcessingStage('markdown');
+      setApplyingMarkdown(true);
+      await new Promise(resolve => setTimeout(resolve, 700));
+  
       const finalResponse = responses.intermediateSteps[responses.intermediateSteps.length - 1].response;
       const { encrypted, iv } = await encryptForStorage(finalResponse);
+  
+      // Finalize message
+      setProcessingStage('finalizing');
+      await new Promise(resolve => setTimeout(resolve, 300));
   
       const finalAiMessage = {
         ...tempAiMessage,
@@ -432,6 +488,11 @@ const ChatWindow = () => {
         isStreaming: false,
         steps: responses.intermediateSteps
       };
+  
+      // Reset states
+      setApplyingMarkdown(false);
+      setProcessingStage('');
+      setProcessingModels([]);
   
       setMessages(prev => 
         prev.map(msg => 
@@ -461,6 +522,9 @@ const ChatWindow = () => {
       setMessages(prev => prev.filter(msg => msg.id !== tempAiMessage.id));
       setLoadingStartTime(null);
       setLoadingState('');
+      setProcessingStage('');
+      setProcessingModels([]);
+      setApplyingMarkdown(false);
       throw error;
     }
   };
@@ -468,6 +532,10 @@ const ChatWindow = () => {
   // Add this new function before handleSubmit
   const processFirstToFinish = async (message, chatRef, aiTimestamp) => {
     const isFirstMessage = messages.length === 0;
+
+    // Set initial stage
+    setProcessingStage('sending');
+    setProcessingModels(chatData.modelIds.map(id => id.split('/').pop().replace(':free', '')));
 
     const tempAiMessage = {
       id: Date.now().toString(),
@@ -483,10 +551,10 @@ const ChatWindow = () => {
     setLoadingState('Waiting for first response...');
 
     try {
-      // Create an AbortController for each model
+      // Update stage
+      setProcessingStage('racing');
+      
       const controllers = chatData.modelIds.map(() => new AbortController());
-
-      // Create a promise for each model
       const modelPromises = chatData.modelIds.map(async (modelId, index) => {
         try {
           const response = await ConstantAPI(
@@ -502,7 +570,7 @@ const ChatWindow = () => {
                 )
               );
             },
-            controllers[index].signal // Pass signal to API
+            controllers[index].signal
           );
           return { modelId, response, index };
         } catch (error) {
@@ -513,10 +581,7 @@ const ChatWindow = () => {
         }
       });
 
-      // Use Promise.race to get the first successful response
       const winner = await Promise.race(modelPromises);
-
-      // Cancel all other requests
       controllers.forEach((controller, index) => {
         if (index !== winner.index) {
           controller.abort();
@@ -527,21 +592,32 @@ const ChatWindow = () => {
         throw new Error(`Failed to get response from ${winner.modelId}`);
       }
 
-      const finalResponse = winner.response.choices[0].message.content;
+      // Apply markdown formatting
+      setProcessingStage('markdown');
+      setApplyingMarkdown(true);
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Encrypt response for storage
+      const finalResponse = winner.response.choices[0].message.content;
       const { encrypted, iv } = await encryptForStorage(finalResponse);
+      
+      // Finalize the response
+      setProcessingStage('finalizing');
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       const finalAiMessage = {
         ...tempAiMessage,
         encrypted,
         iv,
-        message: finalResponse, // Keep decrypted message for local state
+        message: finalResponse,
         isStreaming: false,
         modelId: winner.modelId
       };
 
-      // Update UI with decrypted message
+      // Reset states
+      setApplyingMarkdown(false);
+      setProcessingStage('');
+      setProcessingModels([]);
+
       setMessages(prev => 
         prev.map(msg => 
           msg.id === tempAiMessage.id ? {
@@ -552,7 +628,6 @@ const ChatWindow = () => {
         )
       );
 
-      // Before storing in Firestore, remove undefined values and ensure all required fields are present
       const firestoreMessage = {
         id: finalAiMessage.id,
         encrypted,
@@ -563,7 +638,6 @@ const ChatWindow = () => {
         isStreaming: false
       };
 
-      // Store encrypted message in Firestore
       await updateDoc(chatRef, {
         chatHistory: arrayUnion(firestoreMessage),
         updatedAt: serverTimestamp()
@@ -577,6 +651,9 @@ const ChatWindow = () => {
       setError('Failed to process message');
       setLoadingStartTime(null);
       setLoadingState('');
+      setProcessingStage('');
+      setProcessingModels([]);
+      setApplyingMarkdown(false);
       throw error;
     }
   };
@@ -710,20 +787,52 @@ const ChatWindow = () => {
     }
 
     // Handle keyboard shortcuts
-    if (e.ctrlKey || e.metaKey) {
-      switch (e.key) {
-        case 'b':
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const modifierKey = isMac ? e.metaKey : e.ctrlKey;
+
+    if (modifierKey) {
+      switch (e.key.toLowerCase()) {
+        case 'b': {
           e.preventDefault();
-          insertMarkdown('**');
+          const textarea = e.target;
+          const { selectionStart, selectionEnd } = textarea;
+          const selectedText = textarea.value.slice(selectionStart, selectionEnd);
+          
+          // Insert bold markdown
+          const beforeText = textarea.value.slice(0, selectionStart);
+          const afterText = textarea.value.slice(selectionEnd);
+          const newText = `${beforeText}**${selectedText}**${afterText}`;
+          
+          setInputMessage(newText);
+          
+          // Set cursor position after render
+          requestAnimationFrame(() => {
+            if (selectedText) {
+              textarea.selectionStart = selectionStart + 2;
+              textarea.selectionEnd = selectionEnd + 2;
+            } else {
+              textarea.selectionStart = selectionStart + 2;
+              textarea.selectionEnd = selectionStart + 2;
+            }
+            textarea.focus();
+          });
           break;
-        case 'i':
+        }
+        case 'i': {
           e.preventDefault();
           insertMarkdown('*');
           break;
-        case 'e':
+        }
+        case 'e': { // Inline code
           e.preventDefault();
           insertMarkdown('`');
           break;
+        }
+        case 'k': { // Code block
+          e.preventDefault();
+          insertMarkdown('```');
+          break;
+        }
         default:
           break;
       }
@@ -742,35 +851,55 @@ const ChatWindow = () => {
     } else if (!text.includes('/')) {
       setShowCommands(false);
     }
+    
     let handled = false;
+    
     // Check for markdown shortcuts
     const cursorPosition = textarea.selectionStart;
-    Object.entries(markdownShortcuts).forEach(([trigger, { template, offset }]) => {
-      if (text.slice(cursorPosition - trigger.length, cursorPosition) === trigger) {
-        e.preventDefault();
-        handled = true;
-        // Get selected text if any
-        const selectedText = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
-        
-        // Create new text with template
-        const beforeTrigger = text.slice(0, cursorPosition - trigger.length);
-        const afterTrigger = text.slice(cursorPosition);
-        const newText = beforeTrigger + template.replace('$1', selectedText) + afterTrigger;
-        
-        // Calculate new cursor position
-        const newPosition = cursorPosition - trigger.length + offset;
-        
-        // Update state and cursor position
-        setInputMessage(newText);
-        
-        // Set cursor position after render
-        requestAnimationFrame(() => {
-          textarea.selectionStart = newPosition;
-          textarea.selectionEnd = newPosition + selectedText.length;
-          textarea.focus();
-        });
-      }
-    });
+    
+    // Check if cursor is inside an existing code block or inline code
+    const textBeforeCursor = text.slice(0, cursorPosition);
+    const textAfterCursor = text.slice(cursorPosition);
+    
+    // Count backtick sequences before cursor
+    const codeBlocksBeforeCursor = (textBeforeCursor.match(/```/g) || []).length;
+    const inlineCodesBeforeCursor = (textBeforeCursor.match(/(?<![`])`(?![`])/g) || []).length;
+    
+    // If we're inside a code block, don't apply inline code shortcuts
+    const insideCodeBlock = codeBlocksBeforeCursor % 2 !== 0;
+    // If we're inside inline code, don't apply any shortcuts
+    const insideInlineCode = (inlineCodesBeforeCursor % 2 !== 0);
+    
+    if (!insideCodeBlock && !insideInlineCode) {
+      Object.entries(markdownShortcuts).forEach(([trigger, { template, offset }]) => {
+        // Only trigger if the user actually typed the trigger (not if it was inserted programmatically)
+        if (text.slice(cursorPosition - trigger.length, cursorPosition) === trigger) {
+          e.preventDefault();
+          handled = true;
+          // Get selected text if any
+          const selectedText = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
+          
+          // Create new text with template
+          const beforeTrigger = text.slice(0, cursorPosition - trigger.length);
+          const afterTrigger = text.slice(cursorPosition);
+          const newText = beforeTrigger + template.replace('$1', selectedText) + afterTrigger;
+          
+          // Calculate new cursor position
+          const newPosition = cursorPosition - trigger.length + offset;
+          
+          // Update state and cursor position
+          setInputMessage(newText);
+          
+          // Set cursor position after render
+          requestAnimationFrame(() => {
+            textarea.selectionStart = newPosition;
+            textarea.selectionEnd = newPosition + selectedText.length;
+            textarea.focus();
+          });
+        }
+      });
+    }
+    
     // If no markdown shortcut was triggered, handle normal input
     if (!handled) {
       // Auto-resize textarea
@@ -830,8 +959,9 @@ const ChatWindow = () => {
             <span className="text-blue-400 ml-2">Format:</span>
             <span>**bold**,</span>
             <span>*italic*,</span>
-            <span>`code`</span>
-            <span className="text-gray-500">(Ctrl+B/I/E)</span>
+            <span>`inline`,</span>
+            <span>```code-block```</span>
+            <span className="text-gray-500">(Ctrl+B/I/E/K)</span>
           </div>
         </div>
         <div className="flex gap-2 overflow-x-auto">
@@ -854,7 +984,7 @@ const ChatWindow = () => {
       )}
       {/* Messages Container */}
       <div 
-        className="flex-1 overflow-y-auto p-4 space-y-4"
+        className="flex-1 overflow-y-auto p-4 space-y-4 messages-container"
         onScroll={handleScroll}
       >
         {messages.map((msg) => (
@@ -867,7 +997,8 @@ const ChatWindow = () => {
             isStreaming={msg.isStreaming}
             onCopy={() => navigator.clipboard.writeText(msg.message)}
             onDelete={() => setMessages(messages.filter(m => m.id !== msg.id))}
-            photoURL={msg.isUser ? userPhotoURL : null}  // This is already correct
+            photoURL={msg.isUser ? userPhotoURL : null}
+            isApplyingMarkdown={applyingMarkdown && !msg.isUser && msg.isStreaming} // Pass the markdown state
           />
         ))}
         {isTyping && (
@@ -879,13 +1010,32 @@ const ChatWindow = () => {
             </div>
             {loadingStartTime && (
               <div className="text-sm text-gray-300">
-                {chatData.processingMode === 'series' 
-                  ? `Currently processing with ${loadingState}...`
-                  : chatData.processingMode === 'parallel'
-                  ? `Combining responses from: ${loadingState}`
-                  : `${Date.now() - loadingStartTime > 6000 
-                      ? 'Still thinking... ' 
-                      : 'Processing with '} ${chatData.modelIds[0].split('/').pop().replace(':free', '')}`}
+                {processingStage === 'sending' && (
+                  <span>Sending your prompt to {processingModels.join(', ')}</span>
+                )}
+                {processingStage === 'generating' && (
+                  <span>Generating response from {processingModels.join(', ')}</span>
+                )}
+                {processingStage === 'racing' && (
+                  <span>Models racing to complete your response...</span>
+                )}
+                {processingStage === 'markdown' && (
+                  <span className="text-blue-300">Applying markdown formatting to the response...</span>
+                )}
+                {processingStage === 'finalizing' && (
+                  <span>Finalizing your response...</span>
+                )}
+                {!processingStage && (
+                  <span>
+                    {chatData.processingMode === 'series' 
+                      ? `Currently processing with ${loadingState}...`
+                      : chatData.processingMode === 'parallel'
+                      ? `Combining responses from: ${loadingState}`
+                      : `${Date.now() - loadingStartTime > 6000 
+                          ? 'Still thinking... ' 
+                          : 'Processing with '} ${chatData.modelIds[0].split('/').pop().replace(':free', '')}`}
+                  </span>
+                )}
                 <span className="ml-2 text-xs text-gray-400">
                   {Math.floor((Date.now() - loadingStartTime) / 1000)}s
                 </span>

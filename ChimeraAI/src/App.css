@@ -26,6 +26,32 @@
   scrollbar-color: #4a5568 #1a1a1a;
 }
 
+/* Add to your existing scrollbar styles */
+.messages-container {
+  scroll-behavior: smooth;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Optimize scrollbar for smoother scrolling */
+.messages-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+  background: rgba(74, 85, 104, 0.5);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 85, 104, 0.8);
+}
+
 .prose {
   max-width: none;
 }
@@ -44,9 +70,9 @@
   font-size: 0.9em;
 }
 
-/* Inline code styling */
+/* Inline code styling - Update */
 .prose code:not([class*="language-"]) {
-  display: inline-block;
+  display: inline;
   background: rgba(30, 30, 30, 0.8);
   color: #e3e3e3;
   padding: 0.2em 0.4em;
@@ -56,14 +82,40 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   vertical-align: middle;
   margin: 0 0.2em;
-  white-space: pre-wrap !important;
-  word-break: break-word !important;
-  overflow-wrap: break-word !important;
+  word-break: break-all;
+}
+
+/* Simple inline code styling */
+.prose code:not(.language-*) {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  background: rgba(30, 30, 30, 0.8);
+  color: #e3e3e3;
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: pre;
+  display: inline;
+}
+
+/* Fix for inline code in various elements */
+p code, h1 code, h2 code, h3 code, li code {
+  vertical-align: baseline;
+}
+
+/* Add this to ensure inline code is properly styled */
+.inline-code-tag {
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  vertical-align: middle;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Message Bubble Enhancements */
 .message-content {
   line-height: 1.6;
+  max-width: 100%;
+  width: 100%;
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: break-word;
@@ -106,8 +158,9 @@
   overflow-wrap: break-word !important;
 }
 
-/* Code block container */
+/* Code block container - Update */
 .code-block-container {
+  max-width: 100%;
   display: block;
   margin: 1.5rem 0;
   border-radius: 8px;
@@ -116,6 +169,13 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   width: 100%;
   overflow-wrap: break-word;
+}
+
+/* Ensure code blocks don't inherit inline code styles */
+.code-block-container pre {
+  margin: 0;
+  padding: 0;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
 }
 
 /* Code block header */
@@ -128,19 +188,21 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Code block content */
+/* Code block content - Update */
 .code-block-content {
   position: relative;
   max-height: 400px;
   overflow-y: auto;
+  width: 100%;
   overflow-x: hidden; /* Changed from auto to hidden */
 }
 
-/* Add new style for code content wrapping */
+/* Add new style for code content wrapping - Update */
 .code-block-content pre {
   white-space: pre-wrap !important;
   word-break: break-word !important;
   overflow-wrap: break-word !important;
+  width: 100%;
 }
 
 /* Math equation styling */

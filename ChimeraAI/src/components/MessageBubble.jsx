@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { format } from 'date-fns';
 import { FaCopy, FaTrash, FaUser, FaCode, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
@@ -6,7 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
 import Logo from '../assets/ChimeraAI.png';
+import { defaultSchema } from 'rehype-sanitize';
 
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return '';
@@ -19,6 +23,7 @@ const formatTimestamp = (timestamp) => {
   }
 };
 
+// Add a new prop for the markdown processing state
 const MessageBubble = ({
   message,
   timestamp,
@@ -26,7 +31,8 @@ const MessageBubble = ({
   onCopy,
   onDelete,
   isStreaming,
-  photoURL, // Add photoUrl prop for user avatar
+  photoURL,
+  isApplyingMarkdown = false // Add this new prop
 }) => {
   const [showOptions, setShowOptions] = useState(false);
   const [expandedCodeBlock, setExpandedCodeBlock] = useState({});
@@ -106,7 +112,7 @@ const MessageBubble = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={`flex items-start gap-2 max-w-[85%]`}>
+      <div className={`flex items-start gap-2 max-w-[85%] min-w-0`}>
         {/* AI Avatar - Using Logo */}
         {!isUser && (
           <div className="w-8 h-8 rounded-full bg-white-600 flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden shadow-glow">
@@ -122,10 +128,11 @@ const MessageBubble = ({
         <motion.div
           layout
           className={`
-            rounded-2xl px-4 py-3
+            rounded-2xl px-4 py-3 w-full
             ${isUser 
               ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-blue' 
               : 'bg-gradient-to-br from-gray-700 to-gray-800 text-gray-100 shadow-gray'}
+            ${isApplyingMarkdown ? 'border border-blue-400 animate-pulse' : ''}
             break-words shadow-md hover:shadow-lg transition-shadow
           `}
         >
@@ -134,7 +141,19 @@ const MessageBubble = ({
               <div ref={messageRef} className="message-content">
                 <ReactMarkdown
                   className="prose prose-invert max-w-none break-words"
-                  rehypePlugins={[rehypeRaw]}
+                  rehypePlugins={[
+                    [rehypeSanitize, {
+                      ...defaultSchema,
+                      attributes: {
+                        ...defaultSchema.attributes,
+                        code: [...(defaultSchema.attributes.code || []), ['className']]
+                      }
+                    }]
+                  ]}
+                  remarkPlugins={[remarkGfm]}
+                  skipHtml={false}  // Add this
+                  // Add these options to ensure code blocks are handled correctly
+                  remarkRehypeOptions={{ allowDangerousHtml: true }}
                   components={{
                     p: ({ children }) => (
                       <p className="my-2 whitespace-pre-wrap break-words leading-relaxed">
@@ -187,107 +206,118 @@ const MessageBubble = ({
                     td: ({ children }) => (
                       <td className="border border-gray-600 px-4 py-2">{children}</td>
                     ),
-                    code: ({ node, inline, className, children, ...props }) => {
-                      const isMath = /math/.test(className || '');
-
-                      if (isMath) {
+                    // Fix the processing order by handling pre elements first
+                    pre: ({ children }) => {
+                      // Pre tags should override any inline formatting
+                      // This is critical for code blocks
+                      if (children && children.props && children.props.node && 
+                          children.props.node.tagName === 'code') {
+                        // Extract the raw content and language from the code element
+                        const { className, children: codeChildren } = children.props;
+                        const language = getLanguage(className) || 'text';
+                        const content = String(codeChildren).replace(/\n$/, '');
+                        
+                        // Generate unique ID for this code block
+                        const codeId = `code-${Math.random().toString(36).substring(2, 9)}`;
+                        const isExpanded = expandedCodeBlock[codeId] !== false;
+                        
+                        // Return the custom code block component directly
                         return (
-                          <span className="math">
-                            {inline ? `\\(${children}\\)` : `\\[${children}\\]`}
-                          </span>
-                        );
-                      }
-
-                      if (inline) {
-                        return (
-                          <code className="inline-code" {...props}>
-                            {children}
-                          </code>
+                          <div className="code-block-container my-3 rounded-md overflow-hidden border border-gray-700 bg-gray-900">
+                            <div className="code-block-header bg-gray-800 px-4 py-2 flex justify-between items-center">
+                              <div className="font-semibold text-gray-300 flex items-center">
+                                <FaCode className="mr-2" /> 
+                                <span>{language}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => onCopy(content)}
+                                  className="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
+                                  title="Copy code"
+                                >
+                                  <FaCopy size={14} />
+                                </button>
+                                <button
+                                  onClick={() => toggleCodeBlock(codeId)}
+                                  className="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
+                                  title={isExpanded ? "Collapse" : "Expand"}
+                                >
+                                  {isExpanded ? <FaChevronUp size={14} /> : <FaChevronDown size={14} />}
+                                </button>
+                              </div>
+                            </div>
+                            <div className={`code-block-content relative ${!isExpanded ? 'max-h-52 overflow-hidden' : ''}`}>
+                              <SyntaxHighlighter
+                                language={language}
+                                style={vscDarkPlus}
+                                customStyle={{
+                                  margin: 0,
+                                  padding: '1rem',
+                                  fontSize: '0.9rem',
+                                  background: '#1e1e1e',
+                                }}
+                                // This is important - we're telling it not to process children as markdown
+                                PreTag="div"
+                              >
+                                {content}
+                              </SyntaxHighlighter>
+                              {!isExpanded && (
+                                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#1e1e1e] to-transparent">
+                                  <button
+                                    onClick={() => toggleCodeBlock(codeId)}
+                                    className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-xs text-blue-300 hover:text-blue-200 transition-colors bg-gray-800 px-3 py-1 rounded-full"
+                                  >
+                                    Show more
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         );
                       }
                       
-                      const language = getLanguage(className);
-                      const codeId = `code-${Math.random().toString(36).substring(2, 9)}`;
-                      const isExpanded = expandedCodeBlock[codeId] !== false;
-
-                      return (
-                        <div className="code-block-container">
-                          <div className="code-block-header">
-                            <div className="font-semibold text-gray-300 flex items-center">
-                              <FaCode className="mr-2" /> 
-                              <span className="text-sm">{language}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => onCopy(String(children).replace(/\n$/, ''))}
-                                className="text-gray-400 hover:text-white transition-colors p-1.5 rounded hover:bg-gray-700"
-                                title="Copy code"
-                              >
-                                <FaCopy size={14} />
-                              </button>
-                              <button
-                                onClick={() => toggleCodeBlock(codeId)}
-                                className="text-gray-400 hover:text-white transition-colors p-1.5 rounded hover:bg-gray-700"
-                                title={isExpanded ? "Collapse" : "Expand"}
-                              >
-                                {isExpanded ? <FaChevronUp size={14} /> : <FaChevronDown size={14} />}
-                              </button>
-                            </div>
-                          </div>
-                          <div 
-                            className={`code-block-content transition-all duration-300 ease-in-out 
-                              ${!isExpanded ? 'max-h-52' : ''}`}
-                          >
-                            <SyntaxHighlighter
-                              language={language}
-                              style={vscDarkPlus}
-                              customStyle={{
-                                margin: 0,
-                                padding: '1rem',
-                                fontSize: '0.9rem',
-                                background: '#1e1e1e',
-                                display: 'block',
-                                width: '100%',
-                                whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-word',
-                                overflowWrap: 'break-word'
-                              }}
-                              wrapLines={true}
-                              wrapLongLines={true}
-                            >
-                              {String(children).replace(/\n$/, '')}
-                            </SyntaxHighlighter>
-                            {!isExpanded && (
-                              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#1e1e1e] to-transparent 
-                                flex items-end justify-center pb-2">
-                                <button
-                                  onClick={() => toggleCodeBlock(codeId)}
-                                  className="text-xs text-blue-300 hover:text-blue-200 transition-colors 
-                                    bg-gray-800 px-3 py-1 rounded-full"
-                                >
-                                  Show more
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
+                      // For other pre elements
+                      return <div className="whitespace-pre-wrap break-words">{children}</div>;
                     },
-                    pre: ({ children }) => (
-                      <div className="whitespace-pre-wrap break-words">
-                        {children}
-                      </div>
-                    ),
+                    
+                    // Handle inline code only
+                    code: ({ node, inline, className, children, ...props }) => {
+                      // Only process if it's inline code - codeblocks are handled by pre
+                      if (inline) {
+                        return (
+                          <span 
+                            className="inline-code-tag bg-blue-900/30 text-blue-300 px-2 py-0.5 mx-1 rounded-md text-sm font-mono border border-blue-800"
+                            {...props}
+                          >
+                            {String(children).replace(/\n$/, '')}
+                          </span>
+                        );
+                      }
+                      
+                      // Let pre handle code blocks
+                      return <code className={className} {...props}>{children}</code>;
+                    },
                   }}
-                >
-                  {message}
-                </ReactMarkdown>
+                  >
+                    {message}
+              </ReactMarkdown>
               </div>
               {isStreaming && (
                 <span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse" />
               )}
             </div>
           </div>
+          
+          {/* Add this just after the message content */}
+          {isApplyingMarkdown && (
+            <div className="text-blue-300 text-sm mt-2 flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Applying markdown formatting...
+            </div>
+          )}
           
           <div className="mt-2 flex justify-between items-center text-xs">
             <span className="text-gray-400">{formatTimestamp(timestamp)}</span>
@@ -345,6 +375,25 @@ const MessageBubble = ({
       </div>
     </motion.div>
   );
+};
+
+MessageBubble.propTypes = {
+  message: PropTypes.string.isRequired,
+  timestamp: PropTypes.oneOfType([PropTypes.object, PropTypes.string, PropTypes.number]),
+  isUser: PropTypes.bool,
+  onCopy: PropTypes.func.isRequired,
+  onDelete: PropTypes.func,
+  isStreaming: PropTypes.bool,
+  photoURL: PropTypes.string,
+  isApplyingMarkdown: PropTypes.bool
+};
+
+MessageBubble.defaultProps = {
+  isUser: false,
+  isStreaming: false,
+  isApplyingMarkdown: false,
+  timestamp: null,
+  photoURL: null,
 };
 
 export default MessageBubble;
