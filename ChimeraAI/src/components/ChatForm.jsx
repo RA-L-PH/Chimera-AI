@@ -97,6 +97,55 @@ const AI_MODELS = {
       description: 'Research-focused language model',
       context: '4,096 tokens',
       modelId: 'huggingfaceh4/zephyr-7b-beta:free'
+    },
+    { 
+      id: 'qwq',
+      name: 'Qwen QwQ 32B',
+      description: 'Advanced language understanding model',
+      context: '32,768 tokens',
+      modelId: 'qwen/qwq-32b:free'
+    },
+    { 
+      id: 'moonlight',
+      name: 'Moonlight 16B A3B Instruct',
+      description: 'Specialized instruction processing',
+      context: '8,192 tokens',
+      modelId: 'moonshotai/moonlight-16b-a3b-instruct:free'
+    },
+    { 
+      id: 'deephermes',
+      name: 'DeepHermes 3 Llama 3 8B',
+      description: 'Advanced language processing',
+      context: '131,072 tokens',
+      modelId: 'nousresearch/deephermes-3-llama-3-8b-preview:free'
+    },
+    { 
+      id: 'qwen-coder',
+      name: 'Qwen2.5 Coder 32B',
+      description: 'Specialized language and code processing',
+      context: '128,000 tokens',
+      modelId: 'qwen/qwen-2.5-coder-32b-instruct:free'
+    },
+    { 
+      id: 'llama-3-1b',
+      name: 'Llama 3.2 1B Instruct',
+      description: 'Lightweight language processing',
+      context: '131,072 tokens',
+      modelId: 'meta-llama/llama-3.2-1b-instruct:free'
+    },
+    { 
+      id: 'llama-3-1-8b',
+      name: 'Llama 3.1 8B Instruct',
+      description: 'Balanced language model',
+      context: '131,072 tokens',
+      modelId: 'meta-llama/llama-3.1-8b-instruct:free'
+    },
+    { 
+      id: 'qwen-2-7b',
+      name: 'Qwen 2 7B Instruct',
+      description: 'Efficient instruction processing',
+      context: '8,192 tokens',
+      modelId: 'qwen/qwen-2-7b-instruct:free'
     }
   ],
   math: [
@@ -155,6 +204,13 @@ const AI_MODELS = {
       description: 'Experimental mathematical processing',
       context: '40,000 tokens',
       modelId: 'google/gemini-2.0-flash-thinking-exp-1219:free'
+    },
+    { 
+      id: 'deepseek-r1-zero',
+      name: 'DeepSeek R1 Zero',
+      description: 'Advanced mathematical computation',
+      context: '163,840 tokens',
+      modelId: 'deepseek/deepseek-r1-zero:free'
     }
   ],
   code: [
